@@ -5,76 +5,119 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Team Media Manager</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem 1rem; color: #333; background: #f9f9f9; }
-    .card { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+    :root {
+      --bg: #0f1115;
+      --card-bg: #1a1d24;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --primary: #ff7b00;
+      --primary-hover: #e66e00;
+      --border: #2b303b;
+      --input-bg: #0b0c10;
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; background: var(--bg); color: var(--text-main); }
+    .card { background: var(--card-bg); padding: 2.5rem; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); margin-bottom: 2rem; border: 1px solid var(--border); }
     
     /* Login Screen */
-    #loginScreen { text-align: center; max-width: 400px; margin: 4rem auto; }
-    .user-btn { display: block; width: 100%; padding: 1rem; margin-bottom: 1rem; font-size: 1.1rem; background: #f0f0f0; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-    .user-btn:hover { border-color: #000; background: #fafafa; }
+    #loginScreen { text-align: center; max-width: 400px; margin: 6rem auto; }
+    #loginScreen h2 { margin-top: 0; color: var(--primary); }
+    .error-text { color: #ef4444; margin-top: 1rem; font-weight: 500; font-size: 0.9rem; }
     
     /* Dashboard */
     #appScreen { display: none; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-    .tabs { display: flex; gap: 1rem; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 1rem; }
-    .tab-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.5rem 1rem; color: #666; font-weight: bold; }
-    .tab-btn.active { color: #000; border-bottom: 3px solid #000; margin-bottom: -17px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+    .header h2 { margin: 0; }
+    .header span { color: var(--primary); }
     
-    /* Forms & Tables */
+    .tabs { display: flex; gap: 1.5rem; margin-bottom: 2rem; }
+    .tab-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.5rem 0; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; transition: 0.3s; }
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+    
+    /* Forms & Inputs */
     .form-group { margin-bottom: 1.5rem; text-align: left; }
-    label { font-weight: bold; display: block; margin-bottom: 0.5rem; }
-    select, input[type="file"], input[type="text"] { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button.primary { background: #000; color: #fff; border: none; padding: 0.75rem 1.5rem; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
-    button.primary:disabled { background: #ccc; cursor: not-allowed; }
+    label { font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase; }
+    select, input[type="file"], input[type="text"], input[type="password"] { 
+      width: 100%; padding: 0.85rem; background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main); 
+      border-radius: 6px; box-sizing: border-box; font-size: 1rem; transition: border 0.2s;
+    }
+    select:focus, input:focus { outline: none; border-color: var(--primary); }
+    input[type="file"]::file-selector-button { background: var(--border); color: var(--text-main); border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 1rem; }
+    
+    button.primary { background: var(--primary); color: #fff; border: none; padding: 0.85rem 1.5rem; cursor: pointer; border-radius: 6px; font-weight: bold; width: 100%; font-size: 1rem; transition: 0.2s; }
+    button.primary:hover { background: var(--primary-hover); }
+    button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+    button.secondary:hover { border-color: var(--primary); color: var(--primary); }
     
     .view-section { display: none; }
     .view-section.active { display: block; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left; }
-    th, td { border: 1px solid #ddd; padding: 0.75rem; word-break: break-all; }
-    th { background-color: #f2f2f2; }
-    .status-text { margin-top: 1rem; font-weight: bold; text-align: center; }
     
-    .folder-grid { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-    .folder-card { padding: 1rem 2rem; background: #000; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; border: 2px solid #000; }
-    .folder-card:hover { background: #333; }
-    .folder-card.selected { background: #000; box-shadow: 0 0 0 3px rgba(0,0,0,0.2); }
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left; font-size: 0.95rem; }
+    th, td { border-bottom: 1px solid var(--border); padding: 1rem 0.75rem; word-break: break-all; }
+    th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
+    tr:hover td { background: rgba(255, 123, 0, 0.05); }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .status-text { margin-top: 1.5rem; font-weight: 500; text-align: center; color: var(--primary); }
+    
+    /* Folders */
+    .folder-grid { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .folder-card { padding: 1rem 1.5rem; background: var(--input-bg); color: var(--text-main); border-radius: 8px; cursor: pointer; font-weight: 600; border: 1px solid var(--border); transition: 0.2s; }
+    .folder-card:hover { border-color: var(--text-muted); }
+    .folder-card.selected { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 12px rgba(255, 123, 0, 0.3); }
   </style>
 </head>
 <body>
 
   <!-- Login Screen -->
   <div id="loginScreen" class="card">
-    <h2>Select Profile</h2>
-    <p>Choose your workspace to continue.</p>
-    <button class="user-btn" onclick="login('Shivam')">Log in as Shivam</button>
-    <button class="user-btn" onclick="login('Aninda')">Log in as Aninda</button>
+    <h2>Media Manager</h2>
+    <p style="color: var(--text-muted); margin-bottom: 2rem;">Secure CDN Upload Gateway</p>
+    
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <select id="loginUser" required>
+          <option value="" disabled selected>Select Profile</option>
+          <option value="Shivam">Shivam</option>
+          <option value="Aninda">Aninda</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <input type="password" id="loginPassword" placeholder="Enter Password" required>
+      </div>
+      <button type="submit" class="primary" id="loginBtn">Secure Login</button>
+      <div id="loginError" class="error-text"></div>
+    </form>
   </div>
 
   <!-- Main App Screen -->
   <div id="appScreen">
     <div class="header">
       <h2>Welcome, <span id="userNameDisplay"></span></h2>
-      <button onclick="logout()" style="padding: 0.5rem 1rem; cursor: pointer;">Logout</button>
+      <button class="secondary" onclick="logout()">Logout</button>
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('upload')">Upload New</button>
-      <button class="tab-btn" onclick="switchTab('history')">Previous Uploads</button>
+      <button class="tab-btn active" onclick="switchTab('upload')">Upload Assets</button>
+      <button class="tab-btn" onclick="switchTab('history')">Asset Library</button>
     </div>
 
     <!-- UPLOAD TAB -->
     <div id="uploadTab" class="view-section active card">
       
       <div class="form-group">
-        <label>1. Select or Create Folder</label>
+        <label>1. Destination Folder</label>
         <select id="folderSelect" onchange="toggleNewFolderInput()">
           <option value="">-- Loading your folders --</option>
         </select>
-        <input type="text" id="newFolderInput" placeholder="Enter new folder name (e.g. Campaign-2026)" style="display: none; margin-top: 0.5rem;">
+        <input type="text" id="newFolderInput" placeholder="Enter new folder name (e.g. Campaign-2026)" style="display: none; margin-top: 1rem;">
       </div>
 
       <div class="form-group">
-        <label>2. Image Conversion (Optional)</label>
+        <label>2. Format Optimization</label>
         <select id="formatSelect">
           <option value="original">Keep Original Format</option>
           <option value="webp">Convert to WEBP (Images only)</option>
@@ -87,22 +130,22 @@
         <input type="file" id="fileInput" accept="image/*,video/*" multiple>
       </div>
 
-      <button id="uploadBtn" class="primary">Upload to GitHub</button>
+      <button id="uploadBtn" class="primary">Deploy to CDN</button>
       <div id="status" class="status-text"></div>
     </div>
 
     <!-- HISTORY TAB -->
     <div id="historyTab" class="view-section card">
-      <h3>Your Folders</h3>
+      <label>Your Workspace Folders</label>
       <div id="historyFolderGrid" class="folder-grid">
         <!-- Folders injected here -->
       </div>
       
       <div id="historyFilesSection" style="display: none;">
-        <h3 style="margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1rem;">Files in: <span id="currentHistoryFolder"></span></h3>
-        
-        <!-- CSV Export Button for History -->
-        <button id="historyCsvBtn" class="primary" style="margin-bottom: 1rem; width: auto; display: none; background: #4CAF50;">Download CSV</button>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem; margin-bottom: 1rem;">
+          <h3 style="margin: 0; color: var(--text-main);">Files in: <span id="currentHistoryFolder" style="color: var(--primary);"></span></h3>
+          <button id="historyCsvBtn" class="secondary" style="display: none;">Download CSV</button>
+        </div>
         
         <table>
           <thead>
