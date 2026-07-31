@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const repoName = process.env.GITHUB_REPO;
 
   const safeUser = user?.toLowerCase();
-  const allowedUsers = ['shivam', 'aninda', 'rahul']; 
+  const allowedUsers = ['shivam', 'aninda', 'sharvan']; 
   
   if (!allowedUsers.includes(safeUser)) {
     return res.status(403).json({ message: 'Unauthorized user profile.' });
@@ -17,7 +17,6 @@ export default async function handler(req, res) {
 
   const headers = { 'Authorization': `Bearer ${token}` };
 
-  // Construct the secure target path
   const cleanPath = path.replace(/^\/|\/$/g, '');
   const fullPath = cleanPath ? `images/${safeUser}/${cleanPath}` : `images/${safeUser}`;
 
@@ -37,7 +36,7 @@ export default async function handler(req, res) {
     const folders = data.filter(item => item.type === 'dir').map(dir => dir.name);
     const files = data.filter(item => item.type === 'file').map(file => ({
       name: file.name,
-      size: file.size, // Size in bytes
+      size: file.size, 
       url: `https://cdn.jsdelivr.net/gh/${repoOwner}/${repoName}@main/${file.path}`
     }));
 
