@@ -35,9 +35,9 @@
     .status-text { margin-top: 1rem; font-weight: bold; text-align: center; }
     
     .folder-grid { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-    .folder-card { padding: 1rem 2rem; background: #f0f0f0; border-radius: 4px; cursor: pointer; font-weight: bold; border: 2px solid transparent; }
-    .folder-card:hover { border-color: #000; }
-    .folder-card.selected { background: #000; color: #fff; }
+    .folder-card { padding: 1rem 2rem; background: #000; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; border: 2px solid #000; }
+    .folder-card:hover { background: #333; }
+    .folder-card.selected { background: #000; box-shadow: 0 0 0 3px rgba(0,0,0,0.2); }
   </style>
 </head>
 <body>
@@ -100,9 +100,14 @@
       
       <div id="historyFilesSection" style="display: none;">
         <h3 style="margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1rem;">Files in: <span id="currentHistoryFolder"></span></h3>
+        
+        <!-- CSV Export Button for History -->
+        <button id="historyCsvBtn" class="primary" style="margin-bottom: 1rem; width: auto; display: none; background: #4CAF50;">Download CSV</button>
+        
         <table>
           <thead>
             <tr>
+              <th style="width: 25%;">Original Name</th>
               <th style="width: 30%;">File Name</th>
               <th>CDN Link</th>
             </tr>
