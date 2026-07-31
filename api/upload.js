@@ -13,7 +13,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ message: 'Server error: Missing environment variables.' });
   }
 
-  // Validate user access
   const safeUser = user.toLowerCase();
   const allowedUsers = ['shivam', 'aninda', 'rahul'];
   
@@ -21,9 +20,13 @@ export default async function handler(req, res) {
     return res.status(403).json({ message: 'Unauthorized user profile.' });
   }
 
-  // Sanitize folder name
-  const safeFolder = folder.replace(/[^a-zA-Z0-9-_]/g, '-');
-  const filePath = `images/${safeUser}/${safeFolder}/${fileName}`;
+  // Allow forward slashes for nested folders, but sanitize other special characters
+  const safeFolder = folder
+    .replace(/[^a-zA-Z0-9-_/]/g, '-')
+    .replace(/\/+/g, '/') // Prevent double slashes
+    .replace(/^\/|\/$/g, ''); // Remove leading/trailing slashes
+
+  const filePath = `images/${safeUser}/${safeFolder ? safeFolder + '/' : ''}${fileName}`;
 
   try {
     const githubUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
@@ -35,7 +38,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: `Upload ${fileName} by ${user} to ${folder}`,
+        message: `Upload ${fileName} by ${user} to ${folder || 'root'}`,
         content: fileData
       })
     });
