@@ -2,6 +2,7 @@ let uploadedAssets = [];
 
 document.getElementById('uploadBtn').addEventListener('click', async () => {
   const fileInput = document.getElementById('fileInput');
+  const formatSelect = document.getElementById('formatSelect').value;
   const statusDiv = document.getElementById('status');
   const btn = document.getElementById('uploadBtn');
   const tableBody = document.getElementById('tableBody');
@@ -21,21 +22,27 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   const files = Array.from(fileInput.files);
   let successCount = 0;
 
-  // Process files sequentially to avoid rate-limiting
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    statusDiv.innerText = `Uploading ${i + 1} of ${files.length}: ${file.name}...`;
-    
-    const timestampedName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    statusDiv.innerText = `Processing ${i + 1} of ${files.length}: ${file.name}...`;
     
     try {
-      const base64Content = await readFileAsBase64(file);
+      // 1. Process the file (converts if it's an image and a format is selected)
+      const { base64, extension } = await processFile(file, formatSelect);
+      
+      // 2. Build the new filename with the correct extension
+      const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+      const cleanBaseName = baseName.replace(/\s+/g, '-');
+      const timestampedName = `${Date.now()}-${cleanBaseName}.${extension}`;
 
+      statusDiv.innerText = `Uploading ${i + 1} of ${files.length}: ${timestampedName}...`;
+
+      // 3. Send to Vercel Backend
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileData: base64Content,
+          fileData: base64,
           fileName: timestampedName
         })
       });
@@ -43,41 +50,78 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Save to our array for the CSV export
         uploadedAssets.push({
           originalName: file.name,
+          uploadedName: timestampedName,
           cdnUrl: data.url
         });
 
-        // Add row to the live table
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td>${file.name}</td>
+          <td>${timestampedName}</td>
           <td><a href="${data.url}" target="_blank">${data.url}</a></td>
         `;
         tableBody.appendChild(row);
         
         successCount++;
-        csvBtn.style.display = "inline-block"; // Show CSV button once we have data
+        csvBtn.style.display = "inline-block";
       } else {
         console.error(`Failed to upload ${file.name}:`, data.message);
       }
     } catch (error) {
-      console.error(`Network error on ${file.name}:`, error);
+      console.error(`Error processing/uploading ${file.name}:`, error);
     }
   }
 
-  statusDiv.innerText = `Upload complete! ${successCount} of ${files.length} files successfully uploaded.`;
+  statusDiv.innerText = `Complete! ${successCount} of ${files.length} files successfully uploaded.`;
   btn.disabled = false;
-  fileInput.value = ""; // Clear input for the next batch
+  fileInput.value = ""; 
 });
 
-// Helper function to read files
-function readFileAsBase64(file) {
+// Powerful processing function to handle Canvas conversions
+function processFile(file, targetFormat) {
   return new Promise((resolve, reject) => {
+    const originalExtension = file.name.split('.').pop().toLowerCase();
+
+    // If it's not an image, or user selected 'original', skip conversion
+    if (!file.type.startsWith('image/') || targetFormat === 'original') {
+      const reader = new FileReader();
+      reader.onload = () => resolve({
+        base64: reader.result.split(',')[1],
+        extension: originalExtension
+      });
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // Convert Image using Canvas
+    const img = new Image();
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = error => reject(error);
+    
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill with white background in case converting transparent PNG to JPEG
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        
+        const mimeType = targetFormat === 'webp' ? 'image/webp' : 'image/png';
+        // 0.9 is the quality setting for WEBP (90%). PNG ignores this.
+        const dataUrl = canvas.toDataURL(mimeType, 0.9); 
+        
+        resolve({
+          base64: dataUrl.split(',')[1],
+          extension: targetFormat
+        });
+      };
+      img.src = e.target.result;
+    };
     reader.readAsDataURL(file);
   });
 }
@@ -86,16 +130,12 @@ function readFileAsBase64(file) {
 document.getElementById('csvBtn').addEventListener('click', () => {
   if (uploadedAssets.length === 0) return;
 
-  // Create CSV headers
-  let csvContent = "File Name,CDN Link\n";
+  let csvContent = "Original Name,Uploaded Name,CDN Link\n";
   
-  // Append data rows
   uploadedAssets.forEach(asset => {
-    // Wrap names in quotes in case they contain commas
-    csvContent += `"${asset.originalName}","${asset.cdnUrl}"\n`;
+    csvContent += `"${asset.originalName}","${asset.uploadedName}","${asset.cdnUrl}"\n`;
   });
 
-  // Trigger download
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
