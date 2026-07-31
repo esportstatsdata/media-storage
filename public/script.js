@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (savedUser && savedPass) {
     document.getElementById('loginUser').value = savedUser;
     document.getElementById('loginPassword').value = savedPass;
-    // Auto trigger login internally
     const submitEvent = new Event('submit', { cancelable: true });
     handleLogin(submitEvent);
   }
@@ -26,18 +25,16 @@ function togglePassword() {
   const eyeIcon = document.getElementById('eyeIcon');
   if (pwdInput.type === 'password') {
     pwdInput.type = 'text';
-    // Eye-off SVG
     eyeIcon.innerHTML = `<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>`;
   } else {
     pwdInput.type = 'password';
-    // Default Eye SVG
     eyeIcon.innerHTML = `<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>`;
   }
 }
 
 // --- Authentication ---
 async function handleLogin(e) {
-  e.preventDefault();
+  if(e) e.preventDefault();
   const user = document.getElementById('loginUser').value;
   const password = document.getElementById('loginPassword').value;
   const btn = document.getElementById('loginBtn');
@@ -60,7 +57,6 @@ async function handleLogin(e) {
       currentUser = user;
       currentPassword = password; 
       
-      // Save Session
       sessionStorage.setItem('cdn_user', user);
       sessionStorage.setItem('cdn_pass', password);
       
@@ -73,7 +69,7 @@ async function handleLogin(e) {
       loadFolders();
     } else {
       errorDiv.innerText = data.message || "Authentication failed.";
-      sessionStorage.clear(); // Clear bad sessions
+      sessionStorage.clear();
     }
   } catch (err) {
     errorDiv.innerText = "Network error. Please try again.";
@@ -113,15 +109,17 @@ async function loadFolders() {
   if(!select) return;
   select.innerHTML = '<option value="">Loading...</option>';
   try {
-    const res = await fetch(`/api/files?user=${currentUser}`);
+    const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders`);
     const data = await res.json();
     
-    select.innerHTML = '<option value="new_folder">+ Create New Path</option><option value="">/ (Root Directory)</option>';
-    if (data.folders) data.folders.forEach(f => select.innerHTML += `<option value="${f}">${f}</option>`);
-    select.value = data.folders && data.folders.length > 0 ? data.folders[0] : "new_folder";
+    select.innerHTML = '<option value="">/ (Root Directory)</option>';
+    if (data.folders) data.folders.forEach(f => select.innerHTML += `<option value="${f}">/${f}</option>`);
+    select.innerHTML += '<option value="new_folder">+ Create New Target Path</option>';
+    
+    select.value = "";
     toggleNewFolderInput();
   } catch (error) {
-    select.innerHTML = '<option value="new_folder">+ Create New Path</option>';
+    select.innerHTML = '<option value="">/ (Root Directory)</option><option value="new_folder">+ Create New Target Path</option>';
     toggleNewFolderInput();
   }
 }
@@ -226,7 +224,6 @@ async function loadDirectoryContents(targetPath = '') {
   const searchContainer = document.getElementById('searchContainer');
   const hint = document.getElementById('contextHint');
   
-  // Show Loading Spinner UI
   grid.innerHTML = `
     <div class="loader-container">
       <div class="spinner"></div>
@@ -246,15 +243,13 @@ async function loadDirectoryContents(targetPath = '') {
   try {
     const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(currentPath)}`);
     const data = await res.json();
-    grid.innerHTML = ''; // Clear Spinner
+    grid.innerHTML = ''; 
     
-    // Folders
     if (data.folders && data.folders.length > 0) {
       window.currentFolders = data.folders;
       if(hint) hint.style.display = 'block';
     }
 
-    // Files
     if (data.files && data.files.length > 0) {
       if(toolbar) toolbar.style.display = 'flex';
       if(searchContainer) searchContainer.style.display = 'flex';
@@ -309,7 +304,6 @@ function renderFiles() {
   const filesToRender = getFilteredFiles();
   const foldersToRender = getFilteredFolders();
   
-  // Render Folders
   grid.innerHTML = '';
   const folderIcon = `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
   foldersToRender.forEach(folder => {
@@ -322,7 +316,6 @@ function renderFiles() {
     grid.appendChild(div);
   });
 
-  // Render Files
   container.innerHTML = '';
   if (filesToRender.length === 0 && foldersToRender.length === 0) {
     container.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;">No matching assets found.</div>';
@@ -436,7 +429,7 @@ function showContextMenu(e, path, type, originalName, url = null) {
 
 document.addEventListener('click', () => { document.getElementById('contextMenu').style.display = 'none'; });
 
-function triggerContextAction(action) {
+async function triggerContextAction(action) {
   if (!rightClickedItem) return;
   document.getElementById('contextMenu').style.display = 'none';
   
@@ -449,36 +442,64 @@ function triggerContextAction(action) {
       executeAction('DELETE');
     }
   } else {
-    // Open dynamic modal for Rename, Move, Duplicate
     pendingAction = action.toUpperCase();
     const modal = document.getElementById('actionModal');
     const title = document.getElementById('actionModalTitle');
+    const inputGroup = document.getElementById('actionInputGroup');
+    const folderGroup = document.getElementById('actionFolderGroup');
     const label = document.getElementById('actionLabel');
     const input = document.getElementById('actionInput');
+    const select = document.getElementById('actionFolderSelect');
     
     document.getElementById('actionError').innerText = "";
     
     if (pendingAction === 'RENAME') {
+      folderGroup.style.display = 'none';
+      inputGroup.style.display = 'block';
       title.innerText = rightClickedItem.type === 'folder' ? 'Rename Folder' : 'Rename Asset';
-      label.innerText = 'New Name';
+      label.innerText = 'New Name (include extension for files)';
       const parts = rightClickedItem.path.split('/');
       input.value = parts.pop(); 
-    } else if (pendingAction === 'MOVE') {
-      title.innerText = 'Move to Path';
-      label.innerText = 'Target Directory (e.g. Archive/2026)';
-      const parts = rightClickedItem.path.split('/');
-      parts.pop();
-      input.value = parts.join('/');
-    } else if (pendingAction === 'DUPLICATE') {
-      title.innerText = 'Duplicate to Path';
-      label.innerText = 'Target Directory (e.g. Backups/2026)';
-      const parts = rightClickedItem.path.split('/');
-      parts.pop();
-      input.value = parts.join('/');
+    } else {
+      title.innerText = pendingAction === 'MOVE' ? 'Move Asset' : 'Duplicate Asset';
+      folderGroup.style.display = 'block';
+      inputGroup.style.display = 'none'; 
+      
+      select.innerHTML = '<option value="">Loading directories...</option>';
+      modal.style.display = 'flex';
+      
+      try {
+        const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders`);
+        const data = await res.json();
+        const allFolders = data.folders || [];
+        
+        select.innerHTML = '<option value="">/ (Root Directory)</option>';
+        allFolders.forEach(f => {
+          if (rightClickedItem.type === 'folder' && f.startsWith(rightClickedItem.path)) return;
+          select.innerHTML += `<option value="${f}">/${f}</option>`;
+        });
+        select.innerHTML += '<option value="new_path">+ Create New Target Path</option>';
+      } catch(e) {
+        select.innerHTML = '<option value="">/ (Root Directory)</option><option value="new_path">+ Create New Target Path</option>';
+      }
+      select.value = "";
     }
     
     modal.style.display = 'flex';
-    input.focus();
+    if (pendingAction === 'RENAME') input.focus();
+  }
+}
+
+function handleActionSelectChange() {
+  const select = document.getElementById('actionFolderSelect');
+  const inputGroup = document.getElementById('actionInputGroup');
+  if (select.value === 'new_path') {
+    inputGroup.style.display = 'block';
+    document.getElementById('actionLabel').innerText = 'New Target Path';
+    document.getElementById('actionInput').value = '';
+    document.getElementById('actionInput').focus();
+  } else {
+    inputGroup.style.display = 'none';
   }
 }
 
@@ -508,23 +529,37 @@ function openPreview(url, fileName) {
 
 async function executeAction(overrideAction = null) {
   const actionToRun = overrideAction || pendingAction;
-  const inputVal = document.getElementById('actionInput').value.trim();
   const errDiv = document.getElementById('actionError');
   const btn = document.getElementById('executeActionBtn');
   
   let newPath = null;
   
   if (actionToRun !== 'DELETE') {
-    if (!inputVal) { errDiv.innerText = "Value is required."; return; }
-    
     if (actionToRun === 'RENAME') {
+      const inputVal = document.getElementById('actionInput').value.trim();
+      if (!inputVal) { errDiv.innerText = "New name is required."; return; }
+      
       const parts = rightClickedItem.path.split('/');
       parts.pop(); 
       newPath = parts.length > 0 ? parts.join('/') + '/' + inputVal : inputVal;
     } else {
+      const selectVal = document.getElementById('actionFolderSelect').value;
+      const inputVal = document.getElementById('actionInput').value.trim();
+      const targetFolder = selectVal === 'new_path' ? inputVal : selectVal;
+      
+      if (selectVal === 'new_path' && !inputVal) { errDiv.innerText = "New path is required."; return; }
+      
       const parts = rightClickedItem.path.split('/');
       const fileName = parts.pop();
-      newPath = inputVal ? inputVal + '/' + fileName : fileName;
+      newPath = targetFolder ? targetFolder + '/' + fileName : fileName;
+      
+      if (actionToRun === 'DUPLICATE' && newPath === rightClickedItem.path) {
+        const extIdx = fileName.lastIndexOf('.');
+        const name = extIdx > -1 ? fileName.substring(0, extIdx) : fileName;
+        const ext = extIdx > -1 ? fileName.substring(extIdx) : '';
+        const newName = `${name}-copy${ext}`;
+        newPath = targetFolder ? `${targetFolder}/${newName}` : newName;
+      }
     }
     
     if (newPath === rightClickedItem.path && actionToRun !== 'DUPLICATE') {
