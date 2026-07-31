@@ -13,9 +13,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ message: 'Server error: Missing environment variables.' });
   }
 
-  // Validate user to strictly allow only Shivam or Aninda
+  // Validate user access
   const safeUser = user.toLowerCase();
-  if (safeUser !== 'shivam' && safeUser !== 'aninda') {
+  const allowedUsers = ['shivam', 'aninda', 'rahul'];
+  
+  if (!allowedUsers.includes(safeUser)) {
     return res.status(403).json({ message: 'Unauthorized user profile.' });
   }
 
