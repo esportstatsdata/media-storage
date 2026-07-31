@@ -9,7 +9,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: 'Missing credentials' });
   }
 
-  // Convert username to uppercase to match the environment variable format (e.g., SHIVAM_PASSWORD)
   const envVarName = `${user.toUpperCase()}_PASSWORD`;
   const validPassword = process.env[envVarName];
 
