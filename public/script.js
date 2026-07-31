@@ -1,4 +1,5 @@
 let currentUser = null;
+let currentHistoryFiles = [];
 
 // --- Navigation & Auth ---
 function login(name) {
@@ -21,11 +22,10 @@ function switchTab(tabId) {
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
   
-  // Activate clicked tab
   if(tabId === 'upload') {
     document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
     document.getElementById('uploadTab').classList.add('active');
-    loadFolders(); // Refresh dropdown
+    loadFolders(); 
   } else {
     document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
     document.getElementById('historyTab').classList.add('active');
@@ -47,7 +47,6 @@ async function loadFolders() {
       data.folders.forEach(folder => {
         select.innerHTML += `<option value="${folder}">${folder}</option>`;
       });
-      // Default to the first existing folder if available
       select.value = data.folders[0]; 
     } else {
       select.value = "new_folder";
@@ -100,39 +99,80 @@ async function loadHistoryFolders() {
 }
 
 async function loadHistoryFiles(folder, cardElement) {
-  // UI updates for selection
   document.querySelectorAll('.folder-card').forEach(el => el.classList.remove('selected'));
   cardElement.classList.add('selected');
   
   const section = document.getElementById('historyFilesSection');
   const tbody = document.getElementById('historyTableBody');
+  const csvBtn = document.getElementById('historyCsvBtn');
   document.getElementById('currentHistoryFolder').innerText = folder;
   
   section.style.display = 'block';
-  tbody.innerHTML = '<tr><td colspan="2">Loading files...</td></tr>';
+  csvBtn.style.display = 'none'; 
+  tbody.innerHTML = '<tr><td colspan="3">Loading files...</td></tr>';
+  
+  currentHistoryFiles = [];
   
   try {
     const res = await fetch(`/api/files?user=${currentUser}&folder=${folder}&action=getFiles`);
     const data = await res.json();
     
     if (!data.files || data.files.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="2">No files in this folder.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3">No files in this folder.</td></tr>';
       return;
     }
 
     tbody.innerHTML = '';
     data.files.forEach(file => {
+      const originalNameMatch = file.name.match(/^\d+-(.+)$/);
+      const originalName = originalNameMatch ? originalNameMatch[1] : file.name;
+
+      currentHistoryFiles.push({
+        originalName: originalName,
+        uploadedName: file.name,
+        url: file.url
+      });
+
       tbody.innerHTML += `
         <tr>
+          <td>${originalName}</td>
           <td>${file.name}</td>
           <td><a href="${file.url}" target="_blank">${file.url}</a></td>
         </tr>
       `;
     });
+    
+    csvBtn.style.display = 'inline-block';
+    
   } catch (error) {
-    tbody.innerHTML = '<tr><td colspan="2" style="color:red;">Error fetching files.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color:red;">Error fetching files.</td></tr>';
   }
 }
+
+// --- CSV Export Logic ---
+document.getElementById('historyCsvBtn').addEventListener('click', () => {
+  if (currentHistoryFiles.length === 0) return;
+
+  let csvContent = "Original Name,Uploaded Name,CDN Link\n";
+  
+  currentHistoryFiles.forEach(file => {
+    csvContent += `"${file.originalName}","${file.uploadedName}","${file.url}"\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  
+  const currentFolder = document.getElementById('currentHistoryFolder').innerText;
+  
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${currentUser}_${currentFolder}_history.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+});
 
 // --- Upload Logic & Canvas Conversion ---
 document.getElementById('uploadBtn').addEventListener('click', async () => {
