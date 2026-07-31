@@ -1,13 +1,146 @@
-let uploadedAssets = [];
+let currentUser = null;
 
+// --- Navigation & Auth ---
+function login(name) {
+  currentUser = name;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('userNameDisplay').innerText = currentUser;
+  loadFolders();
+}
+
+function logout() {
+  currentUser = null;
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('historyFilesSection').style.display = 'none';
+  document.getElementById('status').innerText = '';
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+  
+  // Activate clicked tab
+  if(tabId === 'upload') {
+    document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+    document.getElementById('uploadTab').classList.add('active');
+    loadFolders(); // Refresh dropdown
+  } else {
+    document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+    document.getElementById('historyTab').classList.add('active');
+    loadHistoryFolders();
+  }
+}
+
+// --- Folder Management ---
+async function loadFolders() {
+  const select = document.getElementById('folderSelect');
+  select.innerHTML = '<option value="">Loading...</option>';
+  
+  try {
+    const res = await fetch(`/api/files?user=${currentUser}&action=getFolders`);
+    const data = await res.json();
+    
+    select.innerHTML = '<option value="new_folder">+ Create New Folder</option>';
+    if (data.folders && data.folders.length > 0) {
+      data.folders.forEach(folder => {
+        select.innerHTML += `<option value="${folder}">${folder}</option>`;
+      });
+      // Default to the first existing folder if available
+      select.value = data.folders[0]; 
+    } else {
+      select.value = "new_folder";
+    }
+    toggleNewFolderInput();
+  } catch (error) {
+    select.innerHTML = '<option value="new_folder">+ Create New Folder</option>';
+  }
+}
+
+function toggleNewFolderInput() {
+  const select = document.getElementById('folderSelect');
+  const input = document.getElementById('newFolderInput');
+  input.style.display = select.value === 'new_folder' ? 'block' : 'none';
+}
+
+function getSelectedFolder() {
+  const select = document.getElementById('folderSelect').value;
+  if (select === 'new_folder') {
+    return document.getElementById('newFolderInput').value.trim() || 'default';
+  }
+  return select;
+}
+
+// --- History / Dashboard ---
+async function loadHistoryFolders() {
+  const grid = document.getElementById('historyFolderGrid');
+  grid.innerHTML = 'Loading folders...';
+  
+  try {
+    const res = await fetch(`/api/files?user=${currentUser}&action=getFolders`);
+    const data = await res.json();
+    
+    if (!data.folders || data.folders.length === 0) {
+      grid.innerHTML = '<p>No uploads found yet.</p>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    data.folders.forEach(folder => {
+      const div = document.createElement('div');
+      div.className = 'folder-card';
+      div.innerText = folder;
+      div.onclick = () => loadHistoryFiles(folder, div);
+      grid.appendChild(div);
+    });
+  } catch (error) {
+    grid.innerHTML = '<p>Error loading folders.</p>';
+  }
+}
+
+async function loadHistoryFiles(folder, cardElement) {
+  // UI updates for selection
+  document.querySelectorAll('.folder-card').forEach(el => el.classList.remove('selected'));
+  cardElement.classList.add('selected');
+  
+  const section = document.getElementById('historyFilesSection');
+  const tbody = document.getElementById('historyTableBody');
+  document.getElementById('currentHistoryFolder').innerText = folder;
+  
+  section.style.display = 'block';
+  tbody.innerHTML = '<tr><td colspan="2">Loading files...</td></tr>';
+  
+  try {
+    const res = await fetch(`/api/files?user=${currentUser}&folder=${folder}&action=getFiles`);
+    const data = await res.json();
+    
+    if (!data.files || data.files.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2">No files in this folder.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    data.files.forEach(file => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${file.name}</td>
+          <td><a href="${file.url}" target="_blank">${file.url}</a></td>
+        </tr>
+      `;
+    });
+  } catch (error) {
+    tbody.innerHTML = '<tr><td colspan="2" style="color:red;">Error fetching files.</td></tr>';
+  }
+}
+
+// --- Upload Logic & Canvas Conversion ---
 document.getElementById('uploadBtn').addEventListener('click', async () => {
   const fileInput = document.getElementById('fileInput');
   const formatSelect = document.getElementById('formatSelect').value;
   const statusDiv = document.getElementById('status');
   const btn = document.getElementById('uploadBtn');
-  const tableBody = document.getElementById('tableBody');
-  const resultsContainer = document.getElementById('resultsContainer');
-  const csvBtn = document.getElementById('csvBtn');
+  const targetFolder = getSelectedFolder();
   
   if (!fileInput.files.length) {
     statusDiv.innerText = "Please select at least one file.";
@@ -16,9 +149,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   }
 
   btn.disabled = true;
-  resultsContainer.style.display = "block";
   statusDiv.style.color = "#333";
-  
   const files = Array.from(fileInput.files);
   let successCount = 0;
 
@@ -27,75 +158,49 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
     statusDiv.innerText = `Processing ${i + 1} of ${files.length}: ${file.name}...`;
     
     try {
-      // 1. Process the file (converts if it's an image and a format is selected)
       const { base64, extension } = await processFile(file, formatSelect);
-      
-      // 2. Build the new filename with the correct extension
       const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-      const cleanBaseName = baseName.replace(/\s+/g, '-');
-      const timestampedName = `${Date.now()}-${cleanBaseName}.${extension}`;
+      const timestampedName = `${Date.now()}-${baseName.replace(/\s+/g, '-')}.${extension}`;
 
       statusDiv.innerText = `Uploading ${i + 1} of ${files.length}: ${timestampedName}...`;
 
-      // 3. Send to Vercel Backend
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileData: base64,
-          fileName: timestampedName
+          fileName: timestampedName,
+          user: currentUser,
+          folder: targetFolder
         })
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        uploadedAssets.push({
-          originalName: file.name,
-          uploadedName: timestampedName,
-          cdnUrl: data.url
-        });
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${timestampedName}</td>
-          <td><a href="${data.url}" target="_blank">${data.url}</a></td>
-        `;
-        tableBody.appendChild(row);
-        
-        successCount++;
-        csvBtn.style.display = "inline-block";
-      } else {
-        console.error(`Failed to upload ${file.name}:`, data.message);
-      }
+      if (response.ok) successCount++;
     } catch (error) {
-      console.error(`Error processing/uploading ${file.name}:`, error);
+      console.error(`Error with ${file.name}:`, error);
     }
   }
 
-  statusDiv.innerText = `Complete! ${successCount} of ${files.length} files successfully uploaded.`;
+  statusDiv.innerText = `Complete! ${successCount} of ${files.length} files successfully uploaded to ${targetFolder}.`;
   btn.disabled = false;
   fileInput.value = ""; 
 });
 
-// Powerful processing function to handle Canvas conversions
 function processFile(file, targetFormat) {
   return new Promise((resolve, reject) => {
     const originalExtension = file.name.split('.').pop().toLowerCase();
 
-    // If it's not an image, or user selected 'original', skip conversion
     if (!file.type.startsWith('image/') || targetFormat === 'original') {
       const reader = new FileReader();
       reader.onload = () => resolve({
         base64: reader.result.split(',')[1],
         extension: originalExtension
       });
-      reader.onerror = error => reject(error);
+      reader.onerror = reject;
       reader.readAsDataURL(file);
       return;
     }
 
-    // Convert Image using Canvas
     const img = new Image();
     const reader = new FileReader();
     
@@ -106,13 +211,11 @@ function processFile(file, targetFormat) {
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
         
-        // Fill with white background in case converting transparent PNG to JPEG
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
         
         const mimeType = targetFormat === 'webp' ? 'image/webp' : 'image/png';
-        // 0.9 is the quality setting for WEBP (90%). PNG ignores this.
         const dataUrl = canvas.toDataURL(mimeType, 0.9); 
         
         resolve({
@@ -125,26 +228,3 @@ function processFile(file, targetFormat) {
     reader.readAsDataURL(file);
   });
 }
-
-// CSV Generation Logic
-document.getElementById('csvBtn').addEventListener('click', () => {
-  if (uploadedAssets.length === 0) return;
-
-  let csvContent = "Original Name,Uploaded Name,CDN Link\n";
-  
-  uploadedAssets.forEach(asset => {
-    csvContent += `"${asset.originalName}","${asset.uploadedName}","${asset.cdnUrl}"\n`;
-  });
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `cdn_links_${Date.now()}.csv`);
-  link.style.visibility = 'hidden';
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-});
