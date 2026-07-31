@@ -1,16 +1,14 @@
 export default async function handler(req, res) {
-  // Only accept POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // 1. Authenticate via API Key Header
   const apiKey = req.headers['x-api-key'];
   let authenticatedUser = null;
 
   if (apiKey && apiKey === process.env.SHIVAM_API_KEY) authenticatedUser = 'shivam';
   else if (apiKey && apiKey === process.env.ANINDA_API_KEY) authenticatedUser = 'aninda';
-  else if (apiKey && apiKey === process.env.RAHUL_API_KEY) authenticatedUser = 'rahul';
+  else if (apiKey && apiKey === process.env.SHARVAN_API_KEY) authenticatedUser = 'sharvan';
 
   if (!authenticatedUser) {
     return res.status(401).json({ 
@@ -19,7 +17,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // 2. Extract payload
   const { fileData, fileName, folder } = req.body;
   
   if (!fileData || !fileName) {
@@ -29,7 +26,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // 3. Verify Server Configurations
   const token = process.env.GITHUB_TOKEN;
   const repoOwner = process.env.GITHUB_OWNER;
   const repoName = process.env.GITHUB_REPO;
@@ -41,7 +37,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // 4. Construct Nested Path
   const safeFolder = (folder || '')
     .replace(/[^a-zA-Z0-9-_/]/g, '-')
     .replace(/\/+/g, '/')
@@ -49,7 +44,6 @@ export default async function handler(req, res) {
 
   const filePath = `images/${authenticatedUser}/${safeFolder ? safeFolder + '/' : ''}${fileName}`;
 
-  // 5. Push Asset to GitHub
   try {
     const githubUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
     
@@ -61,7 +55,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         message: `API Upload: ${fileName} by ${authenticatedUser} via Headless Request`,
-        content: fileData // Must be pure base64 without the data URI prefix
+        content: fileData
       })
     });
 
@@ -71,7 +65,6 @@ export default async function handler(req, res) {
       throw new Error(data.message || 'GitHub API rejected the upload');
     }
 
-    // Generate Final CDN URL
     const cdnUrl = `https://cdn.jsdelivr.net/gh/${repoOwner}/${repoName}@main/${filePath}`;
 
     return res.status(200).json({ 
