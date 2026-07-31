@@ -3,58 +3,114 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CDN Media Manager</title>
+  <title>Team Media Manager</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; color: #333; }
-    .upload-box { background: #f5f5f5; padding: 2rem; border-radius: 8px; text-align: center; margin-bottom: 2rem; }
-    .form-group { margin-bottom: 1rem; text-align: left; }
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem 1rem; color: #333; background: #f9f9f9; }
+    .card { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+    
+    /* Login Screen */
+    #loginScreen { text-align: center; max-width: 400px; margin: 4rem auto; }
+    .user-btn { display: block; width: 100%; padding: 1rem; margin-bottom: 1rem; font-size: 1.1rem; background: #f0f0f0; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .user-btn:hover { border-color: #000; background: #fafafa; }
+    
+    /* Dashboard */
+    #appScreen { display: none; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    .tabs { display: flex; gap: 1rem; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 1rem; }
+    .tab-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.5rem 1rem; color: #666; font-weight: bold; }
+    .tab-btn.active { color: #000; border-bottom: 3px solid #000; margin-bottom: -17px; }
+    
+    /* Forms & Tables */
+    .form-group { margin-bottom: 1.5rem; text-align: left; }
     label { font-weight: bold; display: block; margin-bottom: 0.5rem; }
-    select, input[type="file"] { width: 100%; padding: 0.5rem; margin-bottom: 1rem; }
-    button { background: #000; color: #fff; border: none; padding: 0.75rem 1.5rem; cursor: pointer; border-radius: 4px; font-weight: bold; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    #csvBtn { background: #4CAF50; margin-top: 1rem; display: none; }
+    select, input[type="file"], input[type="text"] { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button.primary { background: #000; color: #fff; border: none; padding: 0.75rem 1.5rem; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
+    button.primary:disabled { background: #ccc; cursor: not-allowed; }
+    
+    .view-section { display: none; }
+    .view-section.active { display: block; }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left; }
     th, td { border: 1px solid #ddd; padding: 0.75rem; word-break: break-all; }
     th { background-color: #f2f2f2; }
-    .status-text { margin-top: 1rem; font-weight: bold; }
+    .status-text { margin-top: 1rem; font-weight: bold; text-align: center; }
+    
+    .folder-grid { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .folder-card { padding: 1rem 2rem; background: #f0f0f0; border-radius: 4px; cursor: pointer; font-weight: bold; border: 2px solid transparent; }
+    .folder-card:hover { border-color: #000; }
+    .folder-card.selected { background: #000; color: #fff; }
   </style>
 </head>
 <body>
 
-  <h1>Media Manager</h1>
-  
-  <div class="upload-box">
-    <div class="form-group">
-      <label for="fileInput">Select Files</label>
-      <input type="file" id="fileInput" accept="image/*,video/*" multiple>
-    </div>
-
-    <div class="form-group">
-      <label for="formatSelect">Image Conversion</label>
-      <select id="formatSelect">
-        <option value="original">Keep Original Format</option>
-        <option value="webp">Convert to WEBP</option>
-        <option value="png">Convert to PNG</option>
-      </select>
-    </div>
-
-    <button id="uploadBtn">Upload Files</button>
-    <div id="status" class="status-text"></div>
+  <!-- Login Screen -->
+  <div id="loginScreen" class="card">
+    <h2>Select Profile</h2>
+    <p>Choose your workspace to continue.</p>
+    <button class="user-btn" onclick="login('Shivam')">Log in as Shivam</button>
+    <button class="user-btn" onclick="login('Aninda')">Log in as Aninda</button>
   </div>
 
-  <div id="resultsContainer" style="display: none;">
-    <h2>Generated Links</h2>
-    <table id="linksTable">
-      <thead>
-        <tr>
-          <th style="width: 30%;">File Name</th>
-          <th>CDN Link</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-    
-    <button id="csvBtn">Download CSV</button>
+  <!-- Main App Screen -->
+  <div id="appScreen">
+    <div class="header">
+      <h2>Welcome, <span id="userNameDisplay"></span></h2>
+      <button onclick="logout()" style="padding: 0.5rem 1rem; cursor: pointer;">Logout</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('upload')">Upload New</button>
+      <button class="tab-btn" onclick="switchTab('history')">Previous Uploads</button>
+    </div>
+
+    <!-- UPLOAD TAB -->
+    <div id="uploadTab" class="view-section active card">
+      
+      <div class="form-group">
+        <label>1. Select or Create Folder</label>
+        <select id="folderSelect" onchange="toggleNewFolderInput()">
+          <option value="">-- Loading your folders --</option>
+        </select>
+        <input type="text" id="newFolderInput" placeholder="Enter new folder name (e.g. Campaign-2026)" style="display: none; margin-top: 0.5rem;">
+      </div>
+
+      <div class="form-group">
+        <label>2. Image Conversion (Optional)</label>
+        <select id="formatSelect">
+          <option value="original">Keep Original Format</option>
+          <option value="webp">Convert to WEBP (Images only)</option>
+          <option value="png">Convert to PNG (Images only)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>3. Select Files</label>
+        <input type="file" id="fileInput" accept="image/*,video/*" multiple>
+      </div>
+
+      <button id="uploadBtn" class="primary">Upload to GitHub</button>
+      <div id="status" class="status-text"></div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="historyTab" class="view-section card">
+      <h3>Your Folders</h3>
+      <div id="historyFolderGrid" class="folder-grid">
+        <!-- Folders injected here -->
+      </div>
+      
+      <div id="historyFilesSection" style="display: none;">
+        <h3 style="margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1rem;">Files in: <span id="currentHistoryFolder"></span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 30%;">File Name</th>
+              <th>CDN Link</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>
