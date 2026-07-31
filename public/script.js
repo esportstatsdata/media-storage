@@ -1,7 +1,7 @@
 let currentUser = null;
 let currentPath = ''; 
 let currentHistoryFiles = [];
-let viewMode = 'list'; // Default state: 'list', 'compact', or 'grid'
+let viewMode = 'list'; // Default state: 'list' or 'grid'
 
 // --- Authentication ---
 async function handleLogin(e) {
@@ -158,7 +158,6 @@ async function loadDirectoryContents(targetPath = '') {
 function changeViewMode(mode) {
   viewMode = mode;
   document.getElementById('btn-view-list').classList.remove('active-view');
-  document.getElementById('btn-view-compact').classList.remove('active-view');
   document.getElementById('btn-view-grid').classList.remove('active-view');
   document.getElementById(`btn-view-${mode}`).classList.add('active-view');
   renderFiles();
@@ -175,10 +174,9 @@ function renderFiles() {
 
   let html = '';
 
-  if (viewMode === 'list' || viewMode === 'compact') {
-    const compactClass = viewMode === 'compact' ? 'compact' : '';
+  if (viewMode === 'list') {
     html = `
-      <div class="table-container ${compactClass}">
+      <div class="table-container">
         <table>
           <thead>
             <tr>
