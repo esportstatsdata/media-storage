@@ -81,42 +81,67 @@
     button.primary { background: var(--primary); color: #fff; border: none; padding: 0.85rem 1.5rem; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.95rem; transition: 0.2s; width: max-content; }
     .login-card button.primary { width: 100%; font-size: 1rem; padding: 1rem; }
     button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
-    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; }
+    
+    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; transition: 0.2s; }
     button.secondary:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-alpha); }
-    .icon-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.4rem; border-radius: 4px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+    
+    .icon-btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); cursor: pointer; padding: 0.4rem; border-radius: 4px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
     .icon-btn:hover { color: var(--primary); background: var(--primary-alpha); }
+    .icon-btn.active-view { color: var(--primary); background: var(--primary-alpha); border-color: var(--primary); }
 
-    .view-section { display: none; max-width: 1000px; }
+    .view-section { display: none; max-width: 1100px; margin: 0 auto; }
     .view-section.active { display: block; animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     
-    .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; margin-bottom: 2rem; color: #fff; }
+    .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; color: #fff; margin: 0; }
+    .header-toolbar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; }
+    .toolbar-actions { display: flex; gap: 0.75rem; align-items: center; }
+    .view-toggles { display: flex; gap: 0.25rem; background: var(--bg-surface); padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
 
-    /* --- Explorer Breadcrumbs --- */
+    /* --- Explorer Breadcrumbs & Folders --- */
     .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
     .crumb { color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 0.5rem; }
     .crumb:hover { color: var(--primary); }
     .crumb.active { color: var(--text-main); cursor: default; }
     .crumb-separator { color: var(--border); }
 
-    /* --- Folders & Tables --- */
     .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
     .folder-card { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; background: var(--bg-surface); border-radius: 8px; cursor: pointer; border: 1px solid var(--border); transition: 0.2s; font-weight: 500; font-size: 0.95rem; }
     .folder-card svg { fill: var(--primary); }
     .folder-card:hover { background: var(--bg-surface-hover); border-color: var(--primary); }
 
-    table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    /* --- Dynamic Views --- */
+    /* 1. List View (Default) */
+    .table-container { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; }
     th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: rgba(0,0,0,0.2); }
     td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: var(--bg-surface-hover); }
     
+    /* 2. Compact View */
+    .table-container.compact td, .table-container.compact th { padding: 0.4rem 1rem; font-size: 0.85rem; }
+    .table-container.compact .icon-btn { padding: 0.2rem; }
+    
     .file-name-wrapper { display: flex; align-items: center; gap: 0.75rem; }
-    .file-name-wrapper svg { fill: var(--text-muted); }
+    .file-name-wrapper svg { fill: var(--text-muted); flex-shrink: 0; }
     .truncate-url { max-width: 200px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; color: var(--text-muted); }
     a { color: var(--primary); text-decoration: none; }
     a:hover { text-decoration: underline; }
+
+    /* 3. Grid View */
+    .grid-view-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
+    .grid-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; }
+    .grid-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+    .grid-preview { height: 140px; background: var(--bg-base); display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
+    .grid-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .grid-preview svg { width: 48px; height: 48px; fill: var(--text-muted); opacity: 0.5; }
+    .grid-info { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .grid-title { font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+    .grid-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .grid-actions { display: flex; justify-content: flex-end; gap: 0.25rem; margin-top: 0.5rem; }
     
+    /* --- Modal --- */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; opacity: 0; animation: fadeIn 0.2s forwards; }
     .modal-content { background: var(--bg-surface); padding: 1rem; border-radius: 8px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
     .modal-close { position: absolute; top: -16px; right: -16px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
@@ -194,7 +219,7 @@
       
       <!-- UPLOAD TAB -->
       <div id="uploadTab" class="view-section active">
-        <h2 class="section-header">Deploy Assets</h2>
+        <h2 class="section-header" style="margin-bottom: 2rem;">Deploy Assets</h2>
         <div style="max-width: 600px;">
           <div class="form-group">
             <label>Destination Path</label>
@@ -228,12 +253,28 @@
 
       <!-- EXPLORER TAB -->
       <div id="historyTab" class="view-section" style="max-width: 100%;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+        
+        <div class="header-toolbar">
           <h2 class="section-header">Asset Explorer</h2>
-          <button id="historyCsvBtn" class="secondary" style="display: none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-            Export Sheet
-          </button>
+          
+          <div class="toolbar-actions" id="toolbarActions" style="display: none;">
+            <div class="view-toggles">
+              <button class="icon-btn active-view" id="btn-view-list" onclick="changeViewMode('list')" title="List View">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+              </button>
+              <button class="icon-btn" id="btn-view-compact" onclick="changeViewMode('compact')" title="Compact View">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 10.5h16v-2H4v2zm0 5h16v-2H4v2zm0-10v2h16v-2H4z"/></svg>
+              </button>
+              <button class="icon-btn" id="btn-view-grid" onclick="changeViewMode('grid')" title="Grid View">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm7 0h5v-6h-5v6zm7 0h5v-6h-5v6zm-7-13v6h5V5h-5zm7 0v6h5V5h-5z"/></svg>
+              </button>
+            </div>
+            
+            <button id="historyCsvBtn" class="secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Export
+            </button>
+          </div>
         </div>
         
         <div class="breadcrumbs" id="breadcrumbNav">
@@ -242,18 +283,9 @@
         
         <div id="historyFolderGrid" class="folder-grid"></div>
         
-        <div id="historyFilesSection" style="display: none;">
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 35%;">Asset Name</th>
-                <th style="width: 15%;">Size</th>
-                <th>CDN Endpoint</th>
-              </tr>
-            </thead>
-            <tbody id="historyTableBody"></tbody>
-          </table>
-        </div>
+        <!-- Dynamic Rendering Container -->
+        <div id="historyFilesSection"></div>
+        
       </div>
     </main>
   </div>
