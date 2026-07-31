@@ -6,150 +6,147 @@
   <title>Cloud CDN Manager</title>
   
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff7b00'><path d='M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z'/></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <style>
     :root {
-      --bg-base: #131314;
-      --bg-surface: #1e1f20;
-      --bg-surface-hover: #2b2d2f;
-      --border: #444746;
-      --text-main: #e3e3e3;
-      --text-muted: #c4c7c5;
+      --bg-base: #0a0a0b;
+      --bg-surface: #141517;
+      --bg-surface-hover: #1e1f22;
+      --border: #333538;
+      --text-main: #e8e8e8;
+      --text-muted: #9a9a9a;
       --primary: #ff7b00;
       --primary-hover: #e66e00;
-      --primary-alpha: rgba(255, 123, 0, 0.15);
+      --primary-alpha: rgba(255, 123, 0, 0.12);
       --danger: #ea4335;
     }
 
     body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-base); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
 
-    /* --- Elevated Login Screen --- */
+    /* --- Brand & Typography --- */
+    .brand-title { font-family: 'Cinzel', serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; }
+
+    /* --- Login Screen --- */
     #loginScreen { 
       display: flex; flex-direction: column; align-items: center; justify-content: center; 
-      width: 100vw; height: 100vh; background-color: #0b0c0d;
-      background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
+      width: 100vw; height: 100vh; background-color: var(--bg-base);
+      background-image: radial-gradient(circle at top, rgba(255, 123, 0, 0.05) 0%, transparent 40%);
     }
     
     .login-card { 
-      background: #181a1b; padding: 3.5rem 3rem; border-radius: 16px; 
-      border: 1px solid rgba(255, 255, 255, 0.05); border-top: 4px solid var(--primary);
-      width: 100%; max-width: 400px; box-shadow: 0 25px 50px rgba(0,0,0,0.7); text-align: center;
+      background: var(--bg-surface); padding: 3.5rem 3rem; border-radius: 12px; 
+      border: 1px solid var(--border); border-top: 3px solid var(--primary);
+      width: 100%; max-width: 400px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); text-align: center;
     }
     
-    .login-icon { background: var(--primary-alpha); color: var(--primary); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto; }
-    .login-card h2 { margin: 0 0 0.5rem 0; font-size: 1.75rem; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
-    .login-card p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.95rem; }
+    .login-card h2 { margin: 1rem 0 0.5rem 0; font-family: 'Cinzel', serif; font-size: 2rem; color: #fff; }
+    .login-card p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
 
-    /* Login Form Alignment Fix */
     #loginForm { display: flex; flex-direction: column; gap: 1.5rem; }
     #loginForm .form-group { margin-bottom: 0; }
 
-    /* --- Application Layout --- */
+    /* --- App Layout --- */
     #appScreen { display: none; width: 100%; height: 100%; }
     
-    .sidebar { width: 260px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; z-index: 10; }
-    .brand { font-size: 1.25rem; font-weight: 600; color: var(--text-main); margin-bottom: 2rem; padding-left: 0.5rem; display: flex; align-items: center; gap: 0.75rem; }
+    .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; }
+    .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.5rem; padding-left: 0.5rem; }
     
-    .nav-btn { background: transparent; border: none; color: var(--text-main); padding: 0.85rem 1rem; border-radius: 24px; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 1rem; transition: all 0.2s ease; width: 100%; text-align: left; margin-bottom: 0.5rem; }
+    .nav-btn { background: transparent; border: none; color: var(--text-main); padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 1rem; transition: 0.2s; width: 100%; text-align: left; margin-bottom: 0.5rem; }
     .nav-btn:hover { background: var(--bg-surface-hover); }
-    .nav-btn.active { background: var(--primary-alpha); color: var(--primary); font-weight: 600; }
+    .nav-btn.active { background: var(--primary-alpha); color: var(--primary); font-weight: 600; border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; }
     .nav-btn.active svg { fill: var(--primary); }
 
-    .new-btn { background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border); padding: 1rem 1.5rem; border-radius: 16px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-    .new-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 6px 12px rgba(255, 123, 0, 0.2); }
-    .new-btn:hover svg { fill: #fff; }
+    .new-btn { background: var(--primary); color: #fff; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: 0.2s; margin-bottom: 2rem; width: 100%; justify-content: center; }
+    .new-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
 
     .user-profile { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     .user-info { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; font-size: 0.9rem; }
-    .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; transition: 0.2s; }
+    .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: 0.2s; }
     .logout-btn:hover { color: var(--danger); background: rgba(234, 67, 53, 0.1); }
 
-    .main-content { flex: 1; background: var(--bg-base); overflow-y: auto; padding: 2.5rem 3.5rem; }
+    .main-content { flex: 1; overflow-y: auto; padding: 3rem 4rem; position: relative; }
 
-    /* --- Forms & Inputs --- */
-    .form-group { margin-bottom: 1.75rem; text-align: left; }
-    label { font-weight: 500; display: block; margin-bottom: 0.75rem; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    /* --- UI Components --- */
+    .form-group { margin-bottom: 1.5rem; text-align: left; }
+    label { font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
     
-    select, input[type="text"], input[type="password"] { width: 100%; padding: 0.9rem 1rem; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); border-radius: 8px; font-size: 0.95rem; font-family: inherit; transition: all 0.2s; box-sizing: border-box; }
-    .login-card select, .login-card input { background: #131415; border-color: rgba(255, 255, 255, 0.1); }
-    select:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
+    input[type="text"], input[type="password"], select { width: 100%; padding: 0.85rem 1rem; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; font-size: 0.95rem; font-family: inherit; transition: 0.2s; box-sizing: border-box; }
+    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
     
-    .file-drop-area { border: 2px dashed var(--border); border-radius: 12px; padding: 4rem 2rem; text-align: center; background: var(--bg-surface); cursor: pointer; transition: all 0.2s; position: relative; }
+    .file-drop-area { border: 2px dashed var(--border); border-radius: 8px; padding: 3rem 2rem; text-align: center; background: var(--bg-surface); cursor: pointer; transition: 0.2s; position: relative; }
     .file-drop-area:hover { border-color: var(--primary); background: var(--primary-alpha); }
     .file-drop-area input[type="file"] { position: absolute; left: 0; top: 0; height: 100%; width: 100%; opacity: 0; cursor: pointer; }
-    .file-msg { color: var(--text-muted); font-size: 0.95rem; display: block; margin-top: 1rem; }
     
-    button.primary { background: var(--primary); color: #fff; border: none; padding: 0.9rem 1.75rem; cursor: pointer; border-radius: 24px; font-weight: 600; font-size: 0.95rem; transition: all 0.2s; width: max-content; }
-    .login-card button.primary { width: 100%; border-radius: 8px; font-size: 1rem; padding: 1rem; }
-    button.primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
-    button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; transform: none; }
-    
-    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.6rem 1.25rem; border-radius: 24px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; }
+    button.primary { background: var(--primary); color: #fff; border: none; padding: 0.85rem 1.5rem; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.95rem; transition: 0.2s; width: max-content; }
+    .login-card button.primary { width: 100%; font-size: 1rem; padding: 1rem; }
+    button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; }
     button.secondary:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-alpha); }
-    
-    .icon-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+    .icon-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.4rem; border-radius: 4px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
     .icon-btn:hover { color: var(--primary); background: var(--primary-alpha); }
 
-    /* --- Views & Folders --- */
-    .view-section { display: none; max-width: 1200px; }
-    .view-section.active { display: block; animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .view-section { display: none; max-width: 1000px; }
+    .view-section.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     
-    .section-header { font-size: 1.5rem; font-weight: 500; margin-bottom: 2rem; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
-    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 3rem; }
-    .folder-card { display: flex; align-items: center; gap: 1rem; padding: 1.25rem; background: var(--bg-surface); border-radius: 12px; cursor: pointer; border: 1px solid var(--border); transition: all 0.2s; color: var(--text-main); font-weight: 500; font-size: 0.95rem; }
-    .folder-card svg { fill: var(--text-muted); transition: 0.2s; }
-    .folder-card:hover { background: var(--bg-surface-hover); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .folder-card.selected { background: var(--primary-alpha); border-color: var(--primary); }
-    .folder-card.selected svg { fill: var(--primary); }
+    .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; margin-bottom: 2rem; color: #fff; }
 
-    /* --- Tables --- */
-    table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; }
-    th { color: var(--text-muted); font-weight: 500; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; }
-    td { padding: 1rem 1.25rem; border-bottom: 1px solid rgba(68, 71, 70, 0.4); color: var(--text-main); vertical-align: middle; }
-    tr:hover td { background: var(--bg-surface); }
+    /* --- Explorer Breadcrumbs --- */
+    .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
+    .crumb { color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 0.5rem; }
+    .crumb:hover { color: var(--primary); }
+    .crumb.active { color: var(--text-main); cursor: default; }
+    .crumb-separator { color: var(--border); }
+
+    /* --- Folders & Tables --- */
+    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .folder-card { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; background: var(--bg-surface); border-radius: 8px; cursor: pointer; border: 1px solid var(--border); transition: 0.2s; font-weight: 500; font-size: 0.95rem; }
+    .folder-card svg { fill: var(--primary); }
+    .folder-card:hover { background: var(--bg-surface-hover); border-color: var(--primary); }
+
+    table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: rgba(0,0,0,0.2); }
+    td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg-surface-hover); }
+    
     .file-name-wrapper { display: flex; align-items: center; gap: 0.75rem; }
-    .file-name-wrapper svg { fill: var(--text-muted); flex-shrink: 0; }
-    .truncate-url { max-width: 250px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
-    a { color: #8ab4f8; text-decoration: none; transition: 0.2s; }
-    a:hover { color: #aecbfa; text-decoration: underline; }
+    .file-name-wrapper svg { fill: var(--text-muted); }
+    .truncate-url { max-width: 200px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; color: var(--text-muted); }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
     
-    /* --- File Preview Modal Overlay --- */
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; opacity: 0; animation: modalFadeIn 0.2s forwards; }
-    @keyframes modalFadeIn { to { opacity: 1; } }
-    .modal-content { background: var(--bg-surface); padding: 1rem; border-radius: 12px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
-    .modal-close { position: absolute; top: -16px; right: -16px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: 0.2s; }
-    .modal-close:hover { background: var(--danger); color: white; border-color: var(--danger); transform: scale(1.1); }
-    .preview-media { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; opacity: 0; animation: fadeIn 0.2s forwards; }
+    .modal-content { background: var(--bg-surface); padding: 1rem; border-radius: 8px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+    .modal-close { position: absolute; top: -16px; right: -16px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .modal-close:hover { background: var(--danger); color: white; border-color: var(--danger); }
+    .preview-media { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px; }
     
-    .status-text { margin-top: 1.5rem; font-weight: 500; color: var(--primary); }
-    .error-text { color: var(--danger); margin-top: 1rem; font-size: 0.9rem; text-align: center; }
+    .status-text { margin-top: 1rem; font-weight: 500; color: var(--primary); }
+    .error-text { color: var(--danger); margin-top: 1rem; font-size: 0.9rem; }
   </style>
 </head>
 <body>
 
-  <!-- Premium SaaS Login Modal -->
+  <!-- Login Modal -->
   <div id="loginScreen">
     <div class="login-card">
-      <div class="login-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-      </div>
-      <h2>Cloud Manager</h2>
-      <p>Secure CDN Access Portal</p>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+      <h2>Studio CDN</h2>
+      <p>Asset Management Portal</p>
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
-          <label>User Profile</label>
+          <label>Operator Profile</label>
           <select id="loginUser" required>
             <option value="" disabled selected>Select Profile</option>
             <option value="Shivam">Shivam</option>
             <option value="Aninda">Aninda</option>
-            <option value="Sharvan">Sharvan</option>
+            <option value="Rahul">Rahul</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Access Token</label>
+          <label>Security Token</label>
           <input type="password" id="loginPassword" placeholder="Enter your password" required>
         </div>
         <button type="submit" class="primary" id="loginBtn">Authorize Access</button>
@@ -162,13 +159,13 @@
   <div id="appScreen">
     <aside class="sidebar">
       <div class="brand">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-        Cloud CDN
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        <span class="brand-title">STUDIO CDN</span>
       </div>
       
       <button class="new-btn" onclick="switchTab('upload')">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-        New Upload
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        New Deployment
       </button>
 
       <nav>
@@ -178,13 +175,13 @@
         </button>
         <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
-          My Drive
+          Asset Library
         </button>
       </nav>
 
       <div class="user-profile">
         <div class="user-info">
-          <div style="width: 28px; height: 28px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;" id="userAvatar">S</div>
+          <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;" id="userAvatar">S</div>
           <span id="userNameDisplay"></span>
         </div>
         <button class="logout-btn" onclick="logout()" title="Logout">
@@ -194,77 +191,74 @@
     </aside>
 
     <main class="main-content">
+      
       <!-- UPLOAD TAB -->
       <div id="uploadTab" class="view-section active">
-        <h2 class="section-header">Upload Assets</h2>
-        
-        <div style="max-width: 650px;">
+        <h2 class="section-header">Deploy Assets</h2>
+        <div style="max-width: 600px;">
           <div class="form-group">
-            <label>Destination Folder</label>
-            <select id="folderSelect" onchange="toggleNewFolderInput()">
-              <option value="">-- Loading your folders --</option>
-            </select>
-            <input type="text" id="newFolderInput" placeholder="Enter new folder name (e.g. Campaign-2026)" style="display: none; margin-top: 0.75rem;">
+            <label>Destination Path</label>
+            <input type="text" id="targetFolderInput" placeholder="e.g. Campaigns/Summer2026/Banners">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Use forward slashes (/) to create nested folders. Leave blank for root.</div>
           </div>
 
           <div class="form-group">
             <label>Format Optimization</label>
             <select id="formatSelect">
               <option value="original">Keep Original Format</option>
-              <option value="webp">Convert to WEBP (Images only)</option>
-              <option value="png">Convert to PNG (Images only)</option>
+              <option value="webp">Force WEBP Conversion (Images)</option>
+              <option value="png">Force PNG Conversion (Images)</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label>Select Files</label>
+            <label>Select Assets</label>
             <div class="file-drop-area">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--primary)" style="margin-bottom: 1rem;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-              <div style="font-weight: 500; font-size: 1.1rem; color: var(--text-main);">Drag & drop files here</div>
-              <span class="file-msg" id="fileMsg">or click to browse from your computer</span>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="var(--primary)" style="margin-bottom: 1rem;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+              <div style="font-weight: 500; color: var(--text-main);">Drop files to deploy</div>
+              <span class="file-msg" id="fileMsg">or click to browse local storage</span>
               <input type="file" id="fileInput" accept="image/*,video/*" multiple onchange="updateFileMsg()">
             </div>
           </div>
 
-          <button id="uploadBtn" class="primary">Deploy to CDN</button>
+          <button id="uploadBtn" class="primary">Push to CDN</button>
           <div id="status" class="status-text"></div>
         </div>
       </div>
 
-      <!-- HISTORY TAB -->
-      <div id="historyTab" class="view-section">
-        <h2 class="section-header">My Drive</h2>
+      <!-- EXPLORER TAB -->
+      <div id="historyTab" class="view-section" style="max-width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+          <h2 class="section-header">Asset Explorer</h2>
+          <button id="historyCsvBtn" class="secondary" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            Export Sheet
+          </button>
+        </div>
         
-        <label>Workspace Folders</label>
+        <div class="breadcrumbs" id="breadcrumbNav">
+          <!-- Injected via JS -->
+        </div>
+        
         <div id="historyFolderGrid" class="folder-grid"></div>
         
         <div id="historyFilesSection" style="display: none;">
-          <div class="section-header" style="font-size: 1.25rem; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 2.5rem; margin-bottom: 1.5rem;">
-            <span>Files in <strong id="currentHistoryFolder" style="color: var(--primary);"></strong></span>
-            <button id="historyCsvBtn" class="secondary" style="display: none;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-              Export CSV
-            </button>
-          </div>
-          
-          <div style="background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 30%;">Name</th>
-                  <th style="width: 30%;">System ID</th>
-                  <th>CDN URL</th>
-                </tr>
-              </thead>
-              <tbody id="historyTableBody"></tbody>
-            </table>
-          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 35%;">Asset Name</th>
+                <th style="width: 15%;">Size</th>
+                <th>CDN Endpoint</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody"></tbody>
+          </table>
         </div>
       </div>
     </main>
   </div>
 
-  <!-- Preview Popup Modal -->
+  <!-- Preview Modal -->
   <div class="modal-overlay" id="previewModal" onclick="closePreview(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closePreview()">✕</button>
