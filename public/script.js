@@ -25,7 +25,7 @@ async function handleLogin(e) {
     if (res.ok && data.success) {
       currentUser = user;
       document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('appScreen').style.display = 'flex'; // Use flex for layout
+      document.getElementById('appScreen').style.display = 'flex'; 
       document.getElementById('userNameDisplay').innerText = currentUser;
       document.getElementById('userAvatar').innerText = currentUser.charAt(0).toUpperCase();
       
@@ -53,7 +53,6 @@ function logout() {
 
 // --- UI Navigation ---
 function switchTab(tabId) {
-  // Update sidebar buttons
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
   
@@ -73,10 +72,13 @@ function updateFileMsg() {
   const msg = document.getElementById('fileMsg');
   if (input.files && input.files.length > 1) {
     msg.innerText = `${input.files.length} files selected`;
+    msg.style.color = "var(--primary)";
   } else if (input.files && input.files.length === 1) {
     msg.innerText = input.files[0].name;
+    msg.style.color = "var(--primary)";
   } else {
     msg.innerText = "or click to browse from your computer";
+    msg.style.color = "var(--text-muted)";
   }
 }
 
@@ -133,8 +135,6 @@ async function loadHistoryFolders() {
     }
 
     grid.innerHTML = '';
-    
-    // SVG Folder Icon to match Google Drive style
     const folderIcon = `<svg width="24" height="24" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
 
     data.folders.forEach(folder => {
@@ -160,7 +160,7 @@ async function loadHistoryFiles(folder, cardElement) {
   
   section.style.display = 'block';
   csvBtn.style.display = 'none'; 
-  tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">Loading assets...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted); text-align: center; padding: 2rem;">Loading assets...</td></tr>';
   
   currentHistoryFiles = [];
   
@@ -169,12 +169,13 @@ async function loadHistoryFiles(folder, cardElement) {
     const data = await res.json();
     
     if (!data.files || data.files.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">Folder is empty.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted); text-align: center; padding: 2rem;">Folder is empty.</td></tr>';
       return;
     }
 
     tbody.innerHTML = '';
     const fileIcon = `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
+    const copyIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
 
     data.files.forEach(file => {
       const originalNameMatch = file.name.match(/^\d+-(.+)$/);
@@ -186,11 +187,24 @@ async function loadHistoryFiles(folder, cardElement) {
         url: file.url
       });
 
+      // HTML structure changed: Wrapped in a div to fix TD flexbox alignment bug
       tbody.innerHTML += `
         <tr>
-          <td class="file-name-cell">${fileIcon} <span style="font-weight: 500;">${originalName}</span></td>
-          <td style="color: var(--text-muted); font-size: 0.85rem;">${file.name}</td>
-          <td><a href="${file.url}" target="_blank">${file.url}</a></td>
+          <td>
+            <div class="file-name-wrapper">
+              ${fileIcon} 
+              <span style="font-weight: 500;">${originalName}</span>
+            </div>
+          </td>
+          <td style="color: var(--text-muted); font-size: 0.85rem; font-family: monospace;">${file.name}</td>
+          <td>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <a href="${file.url}" target="_blank" class="truncate-url" title="${file.url}">${file.url}</a>
+              <button class="icon-btn" onclick="copyToClipboard('${file.url}', this)" title="Copy URL">
+                ${copyIcon}
+              </button>
+            </div>
+          </td>
         </tr>
       `;
     });
@@ -198,11 +212,25 @@ async function loadHistoryFiles(folder, cardElement) {
     csvBtn.style.display = 'inline-flex';
     
   } catch (error) {
-    tbody.innerHTML = '<tr><td colspan="3" style="color: var(--danger); text-align: center;">Failed to retrieve files.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color: var(--danger); text-align: center; padding: 2rem;">Failed to retrieve files.</td></tr>';
   }
 }
 
-// --- CSV Export Logic ---
+// --- Workflow Tools ---
+async function copyToClipboard(text, buttonElement) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const originalHTML = buttonElement.innerHTML;
+    // Show a checkmark temporarily
+    buttonElement.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="var(--primary)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+    setTimeout(() => {
+      buttonElement.innerHTML = originalHTML;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy!', err);
+  }
+}
+
 document.getElementById('historyCsvBtn').addEventListener('click', () => {
   if (currentHistoryFiles.length === 0) return;
 
@@ -276,7 +304,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   
   // Reset UI
   fileInput.value = ""; 
-  document.getElementById('fileMsg').innerText = "or click to browse from your computer";
+  updateFileMsg();
 });
 
 function processFile(file, targetFormat) {
