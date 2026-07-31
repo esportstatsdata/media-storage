@@ -1,7 +1,9 @@
 let currentUser = null;
+let currentPassword = null; // Secured in closure for editorial actions
 let currentPath = ''; 
 let currentHistoryFiles = [];
-let viewMode = 'list'; // Default state: 'list' or 'grid'
+let viewMode = 'list';
+let rightClickedFile = null;
 
 // --- Authentication ---
 async function handleLogin(e) {
@@ -26,13 +28,14 @@ async function handleLogin(e) {
 
     if (res.ok && data.success) {
       currentUser = user;
+      currentPassword = password; // Save for rename/delete api
+      
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('appScreen').style.display = 'flex'; 
       document.getElementById('userNameDisplay').innerText = currentUser;
       document.getElementById('userAvatar').innerText = currentUser.charAt(0).toUpperCase();
       document.getElementById('loginPassword').value = '';
       
-      // Load folders for the upload tab
       loadFolders();
     } else {
       errorDiv.innerText = data.message || "Authentication failed.";
@@ -47,6 +50,7 @@ async function handleLogin(e) {
 
 function logout() {
   currentUser = null;
+  currentPassword = null;
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginUser').value = '';
@@ -69,14 +73,13 @@ function switchTab(tabId) {
   }
 }
 
-// --- Folder Management for Upload Tab ---
+// --- Folder Management ---
 async function loadFolders() {
   const select = document.getElementById('folderSelect');
   if(!select) return;
   select.innerHTML = '<option value="">Loading...</option>';
   
   try {
-    // Fetch root folders using the files API
     const res = await fetch(`/api/files?user=${currentUser}`);
     const data = await res.json();
     
@@ -112,15 +115,13 @@ function getSelectedFolder() {
   if (select.value === 'new_folder') {
     return document.getElementById('newFolderInput').value.trim();
   }
-  return select.value; // Empty string acts as root
+  return select.value;
 }
 
-// --- Utility Functions ---
+// --- Utility ---
 function formatBytes(bytes, decimals = 2) {
   if (!bytes || bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const k = 1024, dm = decimals < 0 ? 0 : decimals, sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
@@ -162,11 +163,14 @@ async function loadDirectoryContents(targetPath = '') {
   const filesSection = document.getElementById('historyFilesSection');
   const toolbar = document.getElementById('toolbarActions');
   const searchContainer = document.getElementById('searchContainer');
+  const contextHint = document.getElementById('contextHint');
   
   grid.innerHTML = '<span style="color: var(--text-muted)">Scanning directory...</span>';
   filesSection.innerHTML = '';
   if(toolbar) toolbar.style.display = 'none';
   if(searchContainer) searchContainer.style.display = 'none';
+  if(contextHint) contextHint.style.display = 'none';
+  
   document.getElementById('searchInput').value = '';
   currentHistoryFiles = [];
   
@@ -176,7 +180,7 @@ async function loadDirectoryContents(targetPath = '') {
     
     grid.innerHTML = '';
     
-    // Render Folders
+    // Folders
     if (data.folders && data.folders.length > 0) {
       const folderIcon = `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
       data.folders.forEach(folder => {
@@ -188,20 +192,20 @@ async function loadDirectoryContents(targetPath = '') {
       });
     }
 
-    // Process Files
+    // Files
     if (data.files && data.files.length > 0) {
       if(toolbar) toolbar.style.display = 'flex';
       if(searchContainer) searchContainer.style.display = 'flex';
+      if(contextHint) contextHint.style.display = 'block';
       
       data.files.forEach(file => {
         const originalNameMatch = file.name.match(/^\d+-(.+)$/);
-        const originalName = originalNameMatch ? originalNameMatch[1] : file.name;
-        
         currentHistoryFiles.push({
           rawName: file.name,
-          originalName: originalName,
+          originalName: originalNameMatch ? originalNameMatch[1] : file.name,
           size: file.size,
-          url: file.url
+          url: file.url,
+          path: currentPath ? `${currentPath}/${file.name}` : file.name // needed for rename/delete
         });
       });
       
@@ -237,106 +241,182 @@ function renderFiles() {
 
   const fileIcon = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
   const genericIconLarge = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>`;
-  const copyIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
-  const previewIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
 
   let html = '';
 
   if (viewMode === 'list') {
-    html = `
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 35%;">Asset Name</th>
-              <th style="width: 15%;">Size</th>
-              <th>CDN Endpoint</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-    
+    html = `<div class="table-container"><table><thead><tr><th style="width: 40%;">Asset Name</th><th style="width: 15%;">Size</th><th>CDN Endpoint</th></tr></thead><tbody>`;
     filesToRender.forEach(file => {
+      // Attached oncontextmenu
       html += `
-        <tr>
-          <td>
-            <div class="file-name-wrapper">
-              ${fileIcon} <span style="font-weight: 500;">${file.originalName}</span>
-            </div>
-          </td>
+        <tr oncontextmenu="showContextMenu(event, '${file.url}')">
+          <td><div class="file-name-wrapper">${fileIcon} <span style="font-weight: 500;">${file.originalName}</span></div></td>
           <td style="color: var(--text-muted);">${formatBytes(file.size)}</td>
-          <td>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <a href="${file.url}" target="_blank" class="truncate-url" title="${file.url}" style="margin-right: auto;">${file.url}</a>
-              <button class="icon-btn" onclick="openPreview('${file.url}', '${file.rawName}')" title="Preview">${previewIcon}</button>
-              <button class="icon-btn" onclick="copyToClipboard('${file.url}', this)" title="Copy URL">${copyIcon}</button>
-            </div>
-          </td>
+          <td><a href="${file.url}" target="_blank" class="truncate-url" title="${file.url}">${file.url}</a></td>
         </tr>
       `;
     });
-    
     html += `</tbody></table></div>`;
     
   } else if (viewMode === 'grid') {
     html = `<div class="grid-view-container">`;
-    
     filesToRender.forEach(file => {
       const isImg = isImageExtension(file.rawName);
-      const previewBlock = isImg 
-        ? `<img src="${file.url}" alt="${file.originalName}" loading="lazy">` 
-        : genericIconLarge;
-        
+      const previewBlock = isImg ? `<img src="${file.url}" alt="${file.originalName}" loading="lazy">` : genericIconLarge;
+      // Attached oncontextmenu  
       html += `
-        <div class="grid-card">
+        <div class="grid-card" oncontextmenu="showContextMenu(event, '${file.url}')">
           <div class="grid-preview">${previewBlock}</div>
           <div class="grid-info">
             <div class="grid-title" title="${file.originalName}">${file.originalName}</div>
             <div class="grid-meta">
               <span>${formatBytes(file.size)}</span>
-              <div class="grid-actions">
-                <button class="icon-btn" onclick="openPreview('${file.url}', '${file.rawName}')" title="Preview">${previewIcon}</button>
-                <button class="icon-btn" onclick="copyToClipboard('${file.url}', this)" title="Copy URL">${copyIcon}</button>
-              </div>
+              <span>Right-Click Menu</span>
             </div>
           </div>
         </div>
       `;
     });
-    
     html += `</div>`;
   }
 
   container.innerHTML = html;
 }
 
-// --- Breadcrumb Renderer ---
 function renderBreadcrumbs() {
   const nav = document.getElementById('breadcrumbNav');
   const homeIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`;
-  
-  if (!currentPath) {
-    nav.innerHTML = `<span class="crumb active">${homeIcon} Root Directory</span>`;
-    return;
-  }
+  if (!currentPath) { nav.innerHTML = `<span class="crumb active">${homeIcon} Root Directory</span>`; return; }
 
   const parts = currentPath.split('/');
   let html = `<span class="crumb" onclick="loadDirectoryContents('')">${homeIcon} Root</span>`;
-  
   let accumulatedPath = '';
+  
   parts.forEach((part, index) => {
     accumulatedPath += (index === 0 ? part : `/${part}`);
     html += `<span class="crumb-separator">/</span>`;
-    
-    if (index === parts.length - 1) {
-      html += `<span class="crumb active">${part}</span>`;
-    } else {
-      const target = accumulatedPath;
-      html += `<span class="crumb" onclick="loadDirectoryContents('${target}')">${part}</span>`;
-    }
+    if (index === parts.length - 1) html += `<span class="crumb active">${part}</span>`;
+    else html += `<span class="crumb" onclick="loadDirectoryContents('${accumulatedPath}')">${part}</span>`;
   });
-  
   nav.innerHTML = html;
+}
+
+// --- Context Menu Logic (Right Click) ---
+function showContextMenu(e, fileUrl) {
+  e.preventDefault();
+  
+  // Find the exact file object
+  rightClickedFile = currentHistoryFiles.find(f => f.url === fileUrl);
+  if(!rightClickedFile) return;
+
+  const menu = document.getElementById('contextMenu');
+  menu.style.display = 'flex';
+  
+  // Ensure menu stays within screen bounds
+  let x = e.pageX;
+  let y = e.pageY;
+  const menuWidth = 220; 
+  const menuHeight = 180;
+  
+  if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 10;
+  if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 10;
+  
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+
+// Hide context menu on left click anywhere
+document.addEventListener('click', () => {
+  document.getElementById('contextMenu').style.display = 'none';
+});
+
+// Trigger actions from the context menu
+function triggerContextAction(action) {
+  if (!rightClickedFile) return;
+  document.getElementById('contextMenu').style.display = 'none'; // hide menu
+  
+  if (action === 'preview') {
+    openPreview(rightClickedFile.url, rightClickedFile.rawName);
+  } else if (action === 'copy') {
+    copyToClipboard(rightClickedFile.url);
+  } else if (action === 'rename') {
+    document.getElementById('renameInput').value = rightClickedFile.rawName;
+    document.getElementById('renameError').innerText = "";
+    document.getElementById('renameModal').style.display = 'flex';
+  } else if (action === 'delete') {
+    if(confirm(`WARNING: Are you sure you want to permanently delete '${rightClickedFile.originalName}'? This action cannot be undone.`)) {
+      executeDelete();
+    }
+  }
+}
+
+// --- Editorial API Integrations ---
+async function executeRename() {
+  const newName = document.getElementById('renameInput').value.trim();
+  const errDiv = document.getElementById('renameError');
+  const btn = document.getElementById('executeRenameBtn');
+  
+  if(!newName || newName === rightClickedFile.rawName) { 
+    closeRename(); 
+    return; 
+  }
+
+  btn.disabled = true; 
+  btn.innerText = "Processing...";
+  
+  try {
+    const res = await fetch('/api/manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'RENAME', 
+        targetPath: rightClickedFile.path, 
+        newName: newName, 
+        user: currentUser, 
+        password: currentPassword 
+      })
+    });
+    const data = await res.json();
+    
+    if(res.ok) {
+      closeRename();
+      loadDirectoryContents(currentPath); // Refresh UI
+    } else throw new Error(data.message);
+  } catch(err) {
+    errDiv.innerText = err.message || "Rename failed. Check repository permissions.";
+  }
+  
+  btn.disabled = false; 
+  btn.innerText = "Save Changes";
+}
+
+function closeRename(e) {
+  if (e && e.target.id !== 'renameModal' && !e.target.classList.contains('secondary')) return;
+  document.getElementById('renameModal').style.display = 'none';
+  rightClickedFile = null;
+}
+
+async function executeDelete() {
+  try {
+    const res = await fetch('/api/manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'DELETE', 
+        targetPath: rightClickedFile.path, 
+        user: currentUser, 
+        password: currentPassword 
+      })
+    });
+    
+    if(res.ok) {
+      loadDirectoryContents(currentPath); // Refresh UI
+    } else {
+      alert("Failed to delete asset. Please check if your GitHub token has the correct 'repo' scope.");
+    }
+  } catch(err) { 
+    alert("Network error during deletion."); 
+  }
 }
 
 // --- Preview & Export ---
@@ -365,12 +445,10 @@ function closePreview(e) {
   document.getElementById('mediaContainer').innerHTML = ''; 
 }
 
-async function copyToClipboard(text, buttonElement) {
+async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
-    const originalHTML = buttonElement.innerHTML;
-    buttonElement.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="var(--primary)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
-    setTimeout(() => buttonElement.innerHTML = originalHTML, 2000);
+    // Optional: Add a small toast notification here if desired
   } catch (err) {}
 }
 
@@ -398,7 +476,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   const formatSelect = document.getElementById('formatSelect').value;
   const statusDiv = document.getElementById('status');
   const btn = document.getElementById('uploadBtn');
-  const targetFolder = getSelectedFolder(); // Correctly grabs dropdown or text input
+  const targetFolder = getSelectedFolder(); 
   
   if (!fileInput.files.length) {
     statusDiv.innerText = "No assets selected.";
@@ -440,7 +518,6 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   fileInput.value = ""; 
   updateFileMsg();
   
-  // Refresh folder list to include any newly created paths
   loadFolders();
 });
 
