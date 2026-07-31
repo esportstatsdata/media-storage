@@ -14,17 +14,16 @@ export default async function handler(req, res) {
   }
 
   const safeUser = user.toLowerCase();
-  const allowedUsers = ['shivam', 'aninda', 'rahul'];
+  const allowedUsers = ['shivam', 'aninda', 'sharvan'];
   
   if (!allowedUsers.includes(safeUser)) {
     return res.status(403).json({ message: 'Unauthorized user profile.' });
   }
 
-  // Allow forward slashes for nested folders, but sanitize other special characters
   const safeFolder = folder
     .replace(/[^a-zA-Z0-9-_/]/g, '-')
-    .replace(/\/+/g, '/') // Prevent double slashes
-    .replace(/^\/|\/$/g, ''); // Remove leading/trailing slashes
+    .replace(/\/+/g, '/') 
+    .replace(/^\/|\/$/g, ''); 
 
   const filePath = `images/${safeUser}/${safeFolder ? safeFolder + '/' : ''}${fileName}`;
 
