@@ -23,13 +23,12 @@ async function handleLogin(e) {
     const data = await res.json();
 
     if (res.ok && data.success) {
-      // Login successful
       currentUser = user;
       document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('appScreen').style.display = 'block';
+      document.getElementById('appScreen').style.display = 'flex'; // Use flex for layout
       document.getElementById('userNameDisplay').innerText = currentUser;
+      document.getElementById('userAvatar').innerText = currentUser.charAt(0).toUpperCase();
       
-      // Clear password field for security
       document.getElementById('loginPassword').value = '';
       loadFolders();
     } else {
@@ -39,32 +38,45 @@ async function handleLogin(e) {
     errorDiv.innerText = "Network error. Please try again.";
   }
   
-  btn.innerText = "Secure Login";
+  btn.innerText = "Sign In";
   btn.disabled = false;
 }
 
 function logout() {
   currentUser = null;
   document.getElementById('appScreen').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('historyFilesSection').style.display = 'none';
   document.getElementById('status').innerText = '';
   document.getElementById('loginUser').value = '';
 }
 
-// --- Navigation ---
+// --- UI Navigation ---
 function switchTab(tabId) {
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  // Update sidebar buttons
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
   
   if(tabId === 'upload') {
-    document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+    document.getElementById('nav-upload').classList.add('active');
     document.getElementById('uploadTab').classList.add('active');
     loadFolders(); 
   } else {
-    document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+    document.getElementById('nav-history').classList.add('active');
     document.getElementById('historyTab').classList.add('active');
     loadHistoryFolders();
+  }
+}
+
+function updateFileMsg() {
+  const input = document.getElementById('fileInput');
+  const msg = document.getElementById('fileMsg');
+  if (input.files && input.files.length > 1) {
+    msg.innerText = `${input.files.length} files selected`;
+  } else if (input.files && input.files.length === 1) {
+    msg.innerText = input.files[0].name;
+  } else {
+    msg.innerText = "or click to browse from your computer";
   }
 }
 
@@ -106,30 +118,34 @@ function getSelectedFolder() {
   return select;
 }
 
-// --- History / Dashboard ---
+// --- History / Workspace ---
 async function loadHistoryFolders() {
   const grid = document.getElementById('historyFolderGrid');
-  grid.innerHTML = 'Loading folders...';
+  grid.innerHTML = '<span style="color: var(--text-muted)">Loading workspace...</span>';
   
   try {
     const res = await fetch(`/api/files?user=${currentUser}&action=getFolders`);
     const data = await res.json();
     
     if (!data.folders || data.folders.length === 0) {
-      grid.innerHTML = '<p style="color: var(--text-muted)">No uploads found yet.</p>';
+      grid.innerHTML = '<span style="color: var(--text-muted)">No folders found yet.</span>';
       return;
     }
 
     grid.innerHTML = '';
+    
+    // SVG Folder Icon to match Google Drive style
+    const folderIcon = `<svg width="24" height="24" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
+
     data.folders.forEach(folder => {
       const div = document.createElement('div');
       div.className = 'folder-card';
-      div.innerText = folder;
+      div.innerHTML = `${folderIcon} <span>${folder}</span>`;
       div.onclick = () => loadHistoryFiles(folder, div);
       grid.appendChild(div);
     });
   } catch (error) {
-    grid.innerHTML = '<p style="color: #ef4444;">Error loading folders.</p>';
+    grid.innerHTML = '<span style="color: var(--danger);">Error loading workspace.</span>';
   }
 }
 
@@ -144,7 +160,7 @@ async function loadHistoryFiles(folder, cardElement) {
   
   section.style.display = 'block';
   csvBtn.style.display = 'none'; 
-  tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted);">Loading files...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">Loading assets...</td></tr>';
   
   currentHistoryFiles = [];
   
@@ -153,11 +169,13 @@ async function loadHistoryFiles(folder, cardElement) {
     const data = await res.json();
     
     if (!data.files || data.files.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted);">No files in this folder.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">Folder is empty.</td></tr>';
       return;
     }
 
     tbody.innerHTML = '';
+    const fileIcon = `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
+
     data.files.forEach(file => {
       const originalNameMatch = file.name.match(/^\d+-(.+)$/);
       const originalName = originalNameMatch ? originalNameMatch[1] : file.name;
@@ -170,17 +188,17 @@ async function loadHistoryFiles(folder, cardElement) {
 
       tbody.innerHTML += `
         <tr>
-          <td>${originalName}</td>
-          <td>${file.name}</td>
+          <td class="file-name-cell">${fileIcon} <span style="font-weight: 500;">${originalName}</span></td>
+          <td style="color: var(--text-muted); font-size: 0.85rem;">${file.name}</td>
           <td><a href="${file.url}" target="_blank">${file.url}</a></td>
         </tr>
       `;
     });
     
-    csvBtn.style.display = 'inline-block';
+    csvBtn.style.display = 'inline-flex';
     
   } catch (error) {
-    tbody.innerHTML = '<tr><td colspan="3" style="color: #ef4444;">Error fetching files.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color: var(--danger); text-align: center;">Failed to retrieve files.</td></tr>';
   }
 }
 
@@ -188,7 +206,7 @@ async function loadHistoryFiles(folder, cardElement) {
 document.getElementById('historyCsvBtn').addEventListener('click', () => {
   if (currentHistoryFiles.length === 0) return;
 
-  let csvContent = "Original Name,Uploaded Name,CDN Link\n";
+  let csvContent = "Original Name,System ID,CDN Link\n";
   
   currentHistoryFiles.forEach(file => {
     csvContent += `"${file.originalName}","${file.uploadedName}","${file.url}"\n`;
@@ -197,11 +215,10 @@ document.getElementById('historyCsvBtn').addEventListener('click', () => {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
-  
   const currentFolder = document.getElementById('currentHistoryFolder').innerText;
   
   link.setAttribute("href", url);
-  link.setAttribute("download", `${currentUser}_${currentFolder}_history.csv`);
+  link.setAttribute("download", `${currentUser}_${currentFolder}_export.csv`);
   link.style.visibility = 'hidden';
   
   document.body.appendChild(link);
@@ -209,7 +226,7 @@ document.getElementById('historyCsvBtn').addEventListener('click', () => {
   document.body.removeChild(link);
 });
 
-// --- Upload Logic & Canvas Conversion ---
+// --- Upload Logic & Processing ---
 document.getElementById('uploadBtn').addEventListener('click', async () => {
   const fileInput = document.getElementById('fileInput');
   const formatSelect = document.getElementById('formatSelect').value;
@@ -218,8 +235,8 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   const targetFolder = getSelectedFolder();
   
   if (!fileInput.files.length) {
-    statusDiv.innerText = "Please select at least one file.";
-    statusDiv.style.color = "#ef4444";
+    statusDiv.innerText = "Please select at least one file to upload.";
+    statusDiv.style.color = "var(--danger)";
     return;
   }
 
@@ -230,14 +247,12 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    statusDiv.innerText = `Processing ${i + 1} of ${files.length}: ${file.name}...`;
+    statusDiv.innerText = `Deploying ${i + 1} of ${files.length}...`;
     
     try {
       const { base64, extension } = await processFile(file, formatSelect);
       const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
       const timestampedName = `${Date.now()}-${baseName.replace(/\s+/g, '-')}.${extension}`;
-
-      statusDiv.innerText = `Uploading ${i + 1} of ${files.length}: ${timestampedName}...`;
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -252,13 +267,16 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
 
       if (response.ok) successCount++;
     } catch (error) {
-      console.error(`Error with ${file.name}:`, error);
+      console.error(`System error processing ${file.name}:`, error);
     }
   }
 
-  statusDiv.innerText = `Deploy Complete! ${successCount} of ${files.length} assets successfully processed.`;
+  statusDiv.innerText = `Deployment Complete: ${successCount} asset(s) successfully pushed to ${targetFolder}.`;
   btn.disabled = false;
+  
+  // Reset UI
   fileInput.value = ""; 
+  document.getElementById('fileMsg').innerText = "or click to browse from your computer";
 });
 
 function processFile(file, targetFormat) {
