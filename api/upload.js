@@ -3,9 +3,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { fileData, fileName } = req.body;
+  const { fileData, fileName, user, folder } = req.body;
   
-  // Pulling credentials securely from Vercel Environment Variables
   const token = process.env.GITHUB_TOKEN;
   const repoOwner = process.env.GITHUB_OWNER;
   const repoName = process.env.GITHUB_REPO;
@@ -14,8 +13,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ message: 'Server error: Missing environment variables.' });
   }
 
+  // Validate user to strictly allow only Shivam or Aninda
+  const safeUser = user.toLowerCase();
+  if (safeUser !== 'shivam' && safeUser !== 'aninda') {
+    return res.status(403).json({ message: 'Unauthorized user profile.' });
+  }
+
+  // Sanitize folder name
+  const safeFolder = folder.replace(/[^a-zA-Z0-9-_]/g, '-');
+  const filePath = `images/${safeUser}/${safeFolder}/${fileName}`;
+
   try {
-    const githubUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/images/${fileName}`;
+    const githubUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
     
     const response = await fetch(githubUrl, {
       method: 'PUT',
@@ -24,7 +33,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: `Upload ${fileName} via Media Manager`,
+        message: `Upload ${fileName} by ${user} to ${folder}`,
         content: fileData
       })
     });
@@ -35,7 +44,7 @@ export default async function handler(req, res) {
       throw new Error(data.message || 'GitHub API error');
     }
 
-    const cdnUrl = `https://cdn.jsdelivr.net/gh/${repoOwner}/${repoName}@main/images/${fileName}`;
+    const cdnUrl = `https://cdn.jsdelivr.net/gh/${repoOwner}/${repoName}@main/${filePath}`;
 
     return res.status(200).json({ success: true, url: cdnUrl });
     
