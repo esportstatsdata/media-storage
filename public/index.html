@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Team Media Manager</title>
+  <title>Cloud CDN Manager</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* Drive Dark Theme Palette */
       --bg-base: #131314;
       --bg-surface: #1e1f20;
       --bg-surface-hover: #2b2d2f;
@@ -39,19 +38,20 @@
       justify-content: center; 
       width: 100vw; 
       height: 100vh; 
-      background: var(--bg-base); 
+      background: radial-gradient(circle at center, #1e1f20 0%, #131314 100%);
     }
     .login-card { 
-      background: var(--bg-surface); 
+      background: rgba(30, 31, 32, 0.7); 
+      backdrop-filter: blur(12px);
       padding: 3rem; 
       border-radius: 16px; 
-      border: 1px solid var(--border); 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
       width: 100%; 
-      max-width: 400px; 
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      max-width: 420px; 
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
     }
-    .login-card h2 { margin: 0 0 0.5rem 0; font-size: 1.75rem; color: var(--text-main); text-align: center; }
-    .login-card p { color: var(--text-muted); text-align: center; margin-bottom: 2rem; font-size: 0.95rem; }
+    .login-card h2 { margin: 0 0 0.5rem 0; font-size: 1.75rem; color: var(--text-main); text-align: center; font-weight: 600; }
+    .login-card p { color: var(--text-muted); text-align: center; margin-bottom: 2.5rem; font-size: 0.95rem; }
 
     /* --- Application Layout --- */
     #appScreen { 
@@ -68,6 +68,7 @@
       flex-direction: column;
       padding: 1.5rem 1rem;
       box-sizing: border-box;
+      z-index: 10;
     }
 
     .brand {
@@ -85,7 +86,7 @@
       background: transparent;
       border: none;
       color: var(--text-main);
-      padding: 0.75rem 1rem;
+      padding: 0.85rem 1rem;
       border-radius: 24px;
       font-size: 0.95rem;
       font-weight: 500;
@@ -93,14 +94,14 @@
       display: flex;
       align-items: center;
       gap: 1rem;
-      transition: 0.2s ease;
+      transition: all 0.2s ease;
       width: 100%;
       text-align: left;
       margin-bottom: 0.5rem;
     }
     
     .nav-btn:hover { background: var(--bg-surface-hover); }
-    .nav-btn.active { background: var(--primary-alpha); color: var(--primary); }
+    .nav-btn.active { background: var(--primary-alpha); color: var(--primary); font-weight: 600; }
     .nav-btn.active svg { fill: var(--primary); }
 
     .new-btn {
@@ -115,11 +116,11 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      transition: 0.2s;
+      transition: all 0.2s;
       margin-bottom: 2rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
-    .new-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .new-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 6px 12px rgba(255, 123, 0, 0.2); }
     .new-btn:hover svg { fill: #fff; }
 
     .user-profile {
@@ -131,36 +132,36 @@
       align-items: center;
     }
     .user-info { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; font-size: 0.9rem; }
-    .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; }
+    .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; transition: 0.2s; }
     .logout-btn:hover { color: var(--danger); background: rgba(234, 67, 53, 0.1); }
 
     .main-content {
       flex: 1;
       background: var(--bg-base);
       overflow-y: auto;
-      padding: 2rem 3rem;
+      padding: 2.5rem 3.5rem;
     }
 
     /* --- Forms & Inputs --- */
     .form-group { margin-bottom: 1.75rem; }
-    label { font-weight: 500; display: block; margin-bottom: 0.75rem; color: var(--text-main); font-size: 0.95rem; }
+    label { font-weight: 500; display: block; margin-bottom: 0.75rem; color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
     
     select, input[type="text"], input[type="password"] { 
-      width: 100%; padding: 0.85rem 1rem; background: var(--bg-base); border: 1px solid var(--border); 
-      color: var(--text-main); border-radius: 8px; font-size: 0.95rem; font-family: inherit; transition: 0.2s;
+      width: 100%; padding: 0.9rem 1rem; background: var(--bg-base); border: 1px solid var(--border); 
+      color: var(--text-main); border-radius: 8px; font-size: 0.95rem; font-family: inherit; transition: all 0.2s;
     }
-    .login-card select, .login-card input { background: var(--bg-surface-hover); }
-    select:focus, input:focus { outline: none; border-color: var(--primary); }
+    .login-card select, .login-card input { background: rgba(0, 0, 0, 0.2); }
+    select:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
     
-    /* Upload Dropzone Styling */
+    /* Upload Dropzone */
     .file-drop-area {
       border: 2px dashed var(--border);
       border-radius: 12px;
-      padding: 3rem 2rem;
+      padding: 4rem 2rem;
       text-align: center;
       background: var(--bg-surface);
       cursor: pointer;
-      transition: 0.2s;
+      transition: all 0.2s;
       position: relative;
     }
     .file-drop-area:hover { border-color: var(--primary); background: var(--primary-alpha); }
@@ -170,44 +171,50 @@
     .file-msg { color: var(--text-muted); font-size: 0.95rem; display: block; margin-top: 1rem; }
     
     button.primary { 
-      background: var(--primary); color: #fff; border: none; padding: 0.85rem 1.5rem; 
-      cursor: pointer; border-radius: 24px; font-weight: 600; font-size: 0.95rem; transition: 0.2s; width: max-content;
+      background: var(--primary); color: #fff; border: none; padding: 0.9rem 1.75rem; 
+      cursor: pointer; border-radius: 24px; font-weight: 600; font-size: 0.95rem; transition: all 0.2s; width: max-content;
     }
     .login-card button.primary { width: 100%; border-radius: 8px; margin-top: 1rem; }
-    button.primary:hover { background: var(--primary-hover); }
-    button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+    button.primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; transform: none; }
     
-    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.6rem 1.25rem; border-radius: 24px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; font-weight: 500; }
-    button.secondary:hover { border-color: var(--primary); color: var(--primary); }
+    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.6rem 1.25rem; border-radius: 24px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; }
+    button.secondary:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-alpha); }
 
-    /* --- Views --- */
+    .icon-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+    .icon-btn:hover { color: var(--primary); background: var(--primary-alpha); }
+
+    /* --- Views & Folders --- */
     .view-section { display: none; max-width: 1200px; }
-    .view-section.active { display: block; }
-    .section-header { font-size: 1.5rem; font-weight: 400; margin-bottom: 2rem; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
+    .view-section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .section-header { font-size: 1.5rem; font-weight: 500; margin-bottom: 2rem; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
 
-    /* --- Folders --- */
-    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 3rem; }
+    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 3rem; }
     .folder-card { 
-      display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; 
+      display: flex; align-items: center; gap: 1rem; padding: 1.25rem; 
       background: var(--bg-surface); border-radius: 12px; cursor: pointer; border: 1px solid var(--border); 
-      transition: 0.2s; color: var(--text-main); font-weight: 500; font-size: 0.95rem;
+      transition: all 0.2s; color: var(--text-main); font-weight: 500; font-size: 0.95rem;
     }
-    .folder-card svg { fill: var(--text-muted); }
-    .folder-card:hover { background: var(--bg-surface-hover); }
+    .folder-card svg { fill: var(--text-muted); transition: 0.2s; }
+    .folder-card:hover { background: var(--bg-surface-hover); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .folder-card.selected { background: var(--primary-alpha); border-color: var(--primary); }
     .folder-card.selected svg { fill: var(--primary); }
 
-    /* --- Tables --- */
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
-    th { color: var(--text-muted); font-weight: 500; padding: 1rem; border-bottom: 1px solid var(--border); }
-    td { padding: 1rem; border-bottom: 1px solid var(--border); color: var(--text-main); word-break: break-all; }
+    /* --- Tables (Fixed Alignment) --- */
+    table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; }
+    th { color: var(--text-muted); font-weight: 500; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; }
+    td { padding: 1rem 1.25rem; border-bottom: 1px solid rgba(68, 71, 70, 0.4); color: var(--text-main); vertical-align: middle; }
     tr:hover td { background: var(--bg-surface); }
     
-    .file-name-cell { display: flex; align-items: center; gap: 0.75rem; }
-    .file-name-cell svg { fill: var(--text-muted); flex-shrink: 0; }
+    /* The Fix: Wrapper inside the TD instead of applying flex directly to TD */
+    .file-name-wrapper { display: flex; align-items: center; gap: 0.75rem; }
+    .file-name-wrapper svg { fill: var(--text-muted); flex-shrink: 0; }
     
-    a { color: #8ab4f8; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    .truncate-url { max-width: 250px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+    a { color: #8ab4f8; text-decoration: none; transition: 0.2s; }
+    a:hover { color: #aecbfa; text-decoration: underline; }
     
     .status-text { margin-top: 1.5rem; font-weight: 500; color: var(--primary); }
     .error-text { color: var(--danger); margin-top: 1rem; font-size: 0.9rem; text-align: center; }
@@ -243,12 +250,12 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="brand">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
         Cloud CDN
       </div>
       
       <button class="new-btn" onclick="switchTab('upload')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
         New Upload
       </button>
 
@@ -265,10 +272,12 @@
 
       <div class="user-profile">
         <div class="user-info">
-          <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px;" id="userAvatar">S</div>
+          <div style="width: 28px; height: 28px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;" id="userAvatar">S</div>
           <span id="userNameDisplay"></span>
         </div>
-        <button class="logout-btn" onclick="logout()">Logout</button>
+        <button class="logout-btn" onclick="logout()" title="Logout">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+        </button>
       </div>
     </aside>
 
@@ -279,13 +288,13 @@
       <div id="uploadTab" class="view-section active">
         <h2 class="section-header">Upload Assets</h2>
         
-        <div style="max-width: 600px;">
+        <div style="max-width: 650px;">
           <div class="form-group">
             <label>Destination Folder</label>
             <select id="folderSelect" onchange="toggleNewFolderInput()">
               <option value="">-- Loading your folders --</option>
             </select>
-            <input type="text" id="newFolderInput" placeholder="New folder name (e.g. Campaign-2026)" style="display: none; margin-top: 0.5rem;">
+            <input type="text" id="newFolderInput" placeholder="Enter new folder name (e.g. Campaign-2026)" style="display: none; margin-top: 0.75rem;">
           </div>
 
           <div class="form-group">
@@ -301,7 +310,7 @@
             <label>Select Files</label>
             <div class="file-drop-area">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--primary)" style="margin-bottom: 1rem;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-              <div style="font-weight: 500; font-size: 1.1rem;">Drag & drop files here</div>
+              <div style="font-weight: 500; font-size: 1.1rem; color: var(--text-main);">Drag & drop files here</div>
               <span class="file-msg" id="fileMsg">or click to browse from your computer</span>
               <input type="file" id="fileInput" accept="image/*,video/*" multiple onchange="updateFileMsg()">
             </div>
@@ -316,30 +325,32 @@
       <div id="historyTab" class="view-section">
         <h2 class="section-header">My Drive</h2>
         
-        <label>Folders</label>
+        <label>Workspace Folders</label>
         <div id="historyFolderGrid" class="folder-grid">
           <!-- Folders injected here via JS -->
         </div>
         
         <div id="historyFilesSection" style="display: none;">
-          <div class="section-header" style="font-size: 1.25rem; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 2rem;">
+          <div class="section-header" style="font-size: 1.25rem; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 2.5rem; margin-bottom: 1.5rem;">
             <span>Files in <strong id="currentHistoryFolder" style="color: var(--primary);"></strong></span>
             <button id="historyCsvBtn" class="secondary" style="display: none;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 0.5rem;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
               Export CSV
             </button>
           </div>
           
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 35%;">Name</th>
-                <th style="width: 30%;">System ID</th>
-                <th>CDN URL</th>
-              </tr>
-            </thead>
-            <tbody id="historyTableBody"></tbody>
-          </table>
+          <div style="background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 30%;">Name</th>
+                  <th style="width: 30%;">System ID</th>
+                  <th>CDN URL</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
       
