@@ -19,7 +19,7 @@
       --primary: #ff7b00;
       --primary-hover: #e66e00;
       --primary-alpha: rgba(255, 123, 0, 0.12);
-      --danger: #ea4335;
+      --danger: #ef4444;
     }
 
     body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-base); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
@@ -32,14 +32,9 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center; 
       width: 100vw; height: 100vh; background-color: var(--bg-base);
       background-image: radial-gradient(circle at top, rgba(255, 123, 0, 0.05) 0%, transparent 40%);
+      position: absolute; z-index: 9999;
     }
-    
-    .login-card { 
-      background: var(--bg-surface); padding: 3.5rem 3rem; border-radius: 12px; 
-      border: 1px solid var(--border); border-top: 3px solid var(--primary);
-      width: 100%; max-width: 400px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); text-align: center;
-    }
-    
+    .login-card { background: var(--bg-surface); padding: 3.5rem 3rem; border-radius: 12px; border: 1px solid var(--border); border-top: 3px solid var(--primary); width: 100%; max-width: 400px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); text-align: center; }
     .login-card h2 { margin: 1rem 0 0.5rem 0; font-family: 'Cinzel', serif; font-size: 2rem; color: #fff; }
     .login-card p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
 
@@ -48,7 +43,6 @@
 
     /* --- App Layout --- */
     #appScreen { display: none; width: 100%; height: 100%; }
-    
     .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; }
     .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.5rem; padding-left: 0.5rem; }
     
@@ -77,7 +71,6 @@
     .file-drop-area { border: 2px dashed var(--border); border-radius: 8px; padding: 3rem 2rem; text-align: center; background: var(--bg-surface); cursor: pointer; transition: 0.2s; position: relative; }
     .file-drop-area:hover { border-color: var(--primary); background: var(--primary-alpha); }
     .file-drop-area input[type="file"] { position: absolute; left: 0; top: 0; height: 100%; width: 100%; opacity: 0; cursor: pointer; }
-    .file-msg { color: var(--text-muted); font-size: 0.95rem; display: block; margin-top: 1rem; }
     
     button.primary { background: var(--primary); color: #fff; border: none; padding: 0.85rem 1.5rem; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.95rem; transition: 0.2s; width: max-content; }
     .login-card button.primary { width: 100%; font-size: 1rem; padding: 1rem; }
@@ -98,41 +91,16 @@
     
     /* --- Toolbar & Search Bar --- */
     .header-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
-    
     .search-container { display: flex; align-items: center; position: relative; flex: 1; max-width: 350px; margin-left: 2rem; }
     .search-container:focus-within .search-icon { fill: var(--primary); }
-    
-    /* Increased CSS specificity to prevent generic input styles from breaking the alignment */
-    input[type="text"].search-input { 
-      width: 100%; 
-      padding: 0.65rem 1rem 0.65rem 2.75rem; 
-      background: var(--bg-surface); 
-      border: 1px solid var(--border); 
-      color: var(--text-main); 
-      border-radius: 24px; 
-      font-size: 0.9rem; 
-      transition: all 0.2s ease; 
-    }
-    input[type="text"].search-input:focus { 
-      outline: none; 
-      border-color: var(--primary); 
-      box-shadow: 0 0 0 2px var(--primary-alpha); 
-      background: var(--bg-base); 
-    }
-    .search-icon { 
-      position: absolute; 
-      left: 14px; 
-      fill: var(--text-muted); 
-      width: 18px; 
-      height: 18px; 
-      pointer-events: none; 
-      transition: fill 0.2s ease;
-    }
+    input[type="text"].search-input { width: 100%; padding: 0.65rem 1rem 0.65rem 2.75rem; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); border-radius: 24px; font-size: 0.9rem; transition: all 0.2s ease; }
+    input[type="text"].search-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); background: var(--bg-base); }
+    .search-icon { position: absolute; left: 14px; fill: var(--text-muted); width: 18px; height: 18px; pointer-events: none; transition: fill 0.2s ease; }
 
     .toolbar-actions { display: flex; gap: 0.75rem; align-items: center; margin-left: auto; }
     .view-toggles { display: flex; gap: 0.25rem; background: var(--bg-surface); padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
 
-    /* --- Explorer Breadcrumbs & Folders --- */
+    /* --- Breadcrumbs & Folders --- */
     .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
     .crumb { color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 0.5rem; }
     .crumb:hover { color: var(--primary); }
@@ -150,6 +118,7 @@
     th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: rgba(0,0,0,0.2); }
     td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
+    tr { transition: 0.2s; cursor: context-menu; }
     tr:hover td { background: var(--bg-surface-hover); }
     
     .file-name-wrapper { display: flex; align-items: center; gap: 0.75rem; }
@@ -159,22 +128,32 @@
     a:hover { text-decoration: underline; }
 
     .grid-view-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
-    .grid-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; }
+    .grid-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; cursor: context-menu; }
     .grid-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
     .grid-preview { height: 140px; background: var(--bg-base); display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
-    .grid-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .grid-preview img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
     .grid-preview svg { width: 48px; height: 48px; fill: var(--text-muted); opacity: 0.5; }
     .grid-info { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
     .grid-title { font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .grid-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
-    .grid-actions { display: flex; justify-content: flex-end; gap: 0.25rem; margin-top: 0.5rem; }
     
-    /* --- Modal --- */
+    /* --- Right-Click Context Menu --- */
+    .context-menu { display: none; position: fixed; z-index: 10000; width: 220px; background: rgba(20, 21, 23, 0.95); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 0.5rem; flex-direction: column; }
+    .context-menu-item { padding: 0.75rem 1rem; color: var(--text-main); cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; font-weight: 500; transition: 0.2s; }
+    .context-menu-item svg { fill: currentColor; }
+    .context-menu-item:hover { background: var(--bg-surface-hover); color: var(--primary); }
+    .context-menu-item.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+    .context-divider { height: 1px; background: var(--border); margin: 0.5rem 0; }
+
+    /* --- Modals --- */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; opacity: 0; animation: fadeIn 0.2s forwards; }
-    .modal-content { background: var(--bg-surface); padding: 1rem; border-radius: 8px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+    .modal-content { background: var(--bg-surface); padding: 1.5rem; border-radius: 8px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
     .modal-close { position: absolute; top: -16px; right: -16px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
     .modal-close:hover { background: var(--danger); color: white; border-color: var(--danger); }
     .preview-media { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px; }
+    
+    .rename-box { width: 400px; max-width: 90vw; align-items: stretch; text-align: left; }
+    .rename-box h3 { margin-top: 0; margin-bottom: 1.5rem; color: #fff; font-family: 'Cinzel', serif; font-size: 1.25rem; }
     
     .status-text { margin-top: 1rem; font-weight: 500; color: var(--primary); }
     .error-text { color: var(--danger); margin-top: 1rem; font-size: 0.9rem; }
@@ -244,7 +223,6 @@
     </aside>
 
     <main class="main-content">
-      
       <!-- UPLOAD TAB -->
       <div id="uploadTab" class="view-section active">
         <h2 class="section-header" style="margin-bottom: 2rem;">Deploy Assets</h2>
@@ -283,11 +261,8 @@
 
       <!-- EXPLORER TAB -->
       <div id="historyTab" class="view-section" style="max-width: 100%;">
-        
         <div class="header-toolbar">
           <h2 class="section-header">Asset Explorer</h2>
-          
-          <!-- Upgraded Search Bar -->
           <div class="search-container" id="searchContainer" style="display: none;">
             <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
             <input type="text" id="searchInput" class="search-input" placeholder="Search assets..." onkeyup="renderFiles()">
@@ -302,7 +277,6 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm7 0h5v-6h-5v6zm7 0h5v-6h-5v6zm-7-13v6h5V5h-5zm7 0v6h5V5h-5z"/></svg>
               </button>
             </div>
-            
             <button id="historyCsvBtn" class="secondary">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
               Export
@@ -310,17 +284,33 @@
           </div>
         </div>
         
-        <div class="breadcrumbs" id="breadcrumbNav">
-          <!-- Injected via JS -->
-        </div>
-        
+        <div class="breadcrumbs" id="breadcrumbNav"></div>
         <div id="historyFolderGrid" class="folder-grid"></div>
-        
-        <!-- Dynamic Rendering Container -->
         <div id="historyFilesSection"></div>
-        
+        <div style="margin-top: 1rem; color: var(--text-muted); font-size: 0.8rem; text-align: center;" id="contextHint">Right-click any asset to manage it.</div>
       </div>
     </main>
+  </div>
+
+  <!-- Right-Click Context Menu -->
+  <div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" onclick="triggerContextAction('preview')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+      Preview Asset
+    </div>
+    <div class="context-menu-item" onclick="triggerContextAction('copy')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+      Copy CDN URL
+    </div>
+    <div class="context-divider"></div>
+    <div class="context-menu-item" onclick="triggerContextAction('rename')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.69l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+      Rename Asset
+    </div>
+    <div class="context-menu-item danger" onclick="triggerContextAction('delete')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      Delete Permanently
+    </div>
   </div>
 
   <!-- Preview Modal -->
@@ -329,6 +319,22 @@
       <button class="modal-close" onclick="closePreview()">✕</button>
       <div id="mediaContainer"></div>
       <div id="previewFileName" style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem; font-family: monospace;"></div>
+    </div>
+  </div>
+
+  <!-- Rename Modal -->
+  <div class="modal-overlay" id="renameModal" onclick="closeRename(event)">
+    <div class="modal-content rename-box" onclick="event.stopPropagation()">
+      <h3>Rename Asset</h3>
+      <div class="form-group">
+        <label>New File Name (include extension)</label>
+        <input type="text" id="renameInput">
+      </div>
+      <div id="renameError" class="error-text"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+        <button class="secondary" onclick="closeRename()">Cancel</button>
+        <button class="primary" id="executeRenameBtn" onclick="executeRename()">Save Changes</button>
+      </div>
     </div>
   </div>
 
