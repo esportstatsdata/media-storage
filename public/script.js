@@ -95,6 +95,15 @@ function isImageExtension(fileName) {
   return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
 }
 
+// Helper to grab only the files matching the search bar query
+function getFilteredFiles() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  return currentHistoryFiles.filter(f => 
+    f.originalName.toLowerCase().includes(query) || 
+    f.rawName.toLowerCase().includes(query)
+  );
+}
+
 // --- Explorer Engine ---
 async function loadDirectoryContents(targetPath = '') {
   currentPath = targetPath;
@@ -103,10 +112,14 @@ async function loadDirectoryContents(targetPath = '') {
   const grid = document.getElementById('historyFolderGrid');
   const filesSection = document.getElementById('historyFilesSection');
   const toolbar = document.getElementById('toolbarActions');
+  const searchContainer = document.getElementById('searchContainer');
   
+  // Reset states
   grid.innerHTML = '<span style="color: var(--text-muted)">Scanning directory...</span>';
   filesSection.innerHTML = '';
   toolbar.style.display = 'none';
+  searchContainer.style.display = 'none';
+  document.getElementById('searchInput').value = '';
   currentHistoryFiles = [];
   
   try {
@@ -130,6 +143,8 @@ async function loadDirectoryContents(targetPath = '') {
     // Process Files
     if (data.files && data.files.length > 0) {
       toolbar.style.display = 'flex';
+      searchContainer.style.display = 'flex'; // Show search bar if there are files
+      
       data.files.forEach(file => {
         const originalNameMatch = file.name.match(/^\d+-(.+)$/);
         const originalName = originalNameMatch ? originalNameMatch[1] : file.name;
@@ -142,7 +157,7 @@ async function loadDirectoryContents(targetPath = '') {
         });
       });
       
-      renderFiles(); // Call the renderer
+      renderFiles(); 
     }
     
     if (data.folders.length === 0 && data.files.length === 0) {
@@ -165,7 +180,12 @@ function changeViewMode(mode) {
 
 function renderFiles() {
   const container = document.getElementById('historyFilesSection');
-  if (currentHistoryFiles.length === 0) return;
+  const filesToRender = getFilteredFiles();
+  
+  if (filesToRender.length === 0) {
+    container.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;">No matching assets found.</div>';
+    return;
+  }
 
   const fileIcon = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
   const genericIconLarge = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>`;
@@ -188,7 +208,7 @@ function renderFiles() {
           <tbody>
     `;
     
-    currentHistoryFiles.forEach(file => {
+    filesToRender.forEach(file => {
       html += `
         <tr>
           <td>
@@ -213,7 +233,7 @@ function renderFiles() {
   } else if (viewMode === 'grid') {
     html = `<div class="grid-view-container">`;
     
-    currentHistoryFiles.forEach(file => {
+    filesToRender.forEach(file => {
       const isImg = isImageExtension(file.rawName);
       const previewBlock = isImg 
         ? `<img src="${file.url}" alt="${file.originalName}" loading="lazy">` 
@@ -307,11 +327,14 @@ async function copyToClipboard(text, buttonElement) {
 }
 
 document.getElementById('historyCsvBtn').addEventListener('click', () => {
-  if (currentHistoryFiles.length === 0) return;
+  const filesToExport = getFilteredFiles();
+  if (filesToExport.length === 0) return;
+  
   let csvContent = "Original Name,File Size,CDN Link\n";
-  currentHistoryFiles.forEach(file => {
+  filesToExport.forEach(file => {
     csvContent += `"${file.originalName}","${formatBytes(file.size)}","${file.url}"\n`;
   });
+  
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement("a");
   link.setAttribute("href", URL.createObjectURL(blob));
