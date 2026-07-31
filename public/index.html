@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cloud CDN Manager</title>
+  <title>Studio CDN | Media Manager</title>
   
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff7b00'><path d='M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z'/></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -24,26 +24,17 @@
 
     body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-base); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
 
-    /* --- Brand & Typography --- */
+    /* --- Brand & Login --- */
     .brand-title { font-family: 'Cinzel', serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; }
-
-    /* --- Login Screen --- */
-    #loginScreen { 
-      display: flex; flex-direction: column; align-items: center; justify-content: center; 
-      width: 100vw; height: 100vh; background-color: var(--bg-base);
-      background-image: radial-gradient(circle at top, rgba(255, 123, 0, 0.05) 0%, transparent 40%);
-      position: absolute; z-index: 9999;
-    }
+    
+    #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: var(--bg-base); background-image: radial-gradient(circle at top, rgba(255, 123, 0, 0.05) 0%, transparent 40%); position: absolute; z-index: 9999; }
     .login-card { background: var(--bg-surface); padding: 3.5rem 3rem; border-radius: 12px; border: 1px solid var(--border); border-top: 3px solid var(--primary); width: 100%; max-width: 400px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); text-align: center; }
     .login-card h2 { margin: 1rem 0 0.5rem 0; font-family: 'Cinzel', serif; font-size: 2rem; color: #fff; }
     .login-card p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
 
-    #loginForm { display: flex; flex-direction: column; gap: 1.5rem; }
-    #loginForm .form-group { margin-bottom: 0; }
-
-    /* --- App Layout --- */
+    /* --- Layout --- */
     #appScreen { display: none; width: 100%; height: 100%; }
-    .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; }
+    .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; z-index: 10;}
     .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.5rem; padding-left: 0.5rem; }
     
     .nav-btn { background: transparent; border: none; color: var(--text-main); padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 1rem; transition: 0.2s; width: 100%; text-align: left; margin-bottom: 0.5rem; }
@@ -57,14 +48,13 @@
     .user-profile { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     .user-info { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; font-size: 0.9rem; }
     .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: 0.2s; }
-    .logout-btn:hover { color: var(--danger); background: rgba(234, 67, 53, 0.1); }
+    .logout-btn:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
 
     .main-content { flex: 1; overflow-y: auto; padding: 3rem 4rem; position: relative; }
 
-    /* --- UI Components --- */
+    /* --- Forms & UI Elements --- */
     .form-group { margin-bottom: 1.5rem; text-align: left; }
     label { font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    
     input[type="text"], input[type="password"], select { width: 100%; padding: 0.85rem 1rem; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; font-size: 0.95rem; font-family: inherit; transition: 0.2s; box-sizing: border-box; }
     input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
     
@@ -73,10 +63,8 @@
     .file-drop-area input[type="file"] { position: absolute; left: 0; top: 0; height: 100%; width: 100%; opacity: 0; cursor: pointer; }
     
     button.primary { background: var(--primary); color: #fff; border: none; padding: 0.85rem 1.5rem; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.95rem; transition: 0.2s; width: max-content; }
-    .login-card button.primary { width: 100%; font-size: 1rem; padding: 1rem; }
     button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
-    
-    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; transition: 0.2s; }
+    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; transition: 0.2s; }
     button.secondary:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-alpha); }
     
     .icon-btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); cursor: pointer; padding: 0.4rem; border-radius: 4px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
@@ -87,9 +75,8 @@
     .view-section.active { display: block; animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     
+    /* --- Toolbar & Search --- */
     .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; color: #fff; margin: 0; }
-    
-    /* --- Toolbar & Search Bar --- */
     .header-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
     .search-container { display: flex; align-items: center; position: relative; flex: 1; max-width: 350px; margin-left: 2rem; }
     .search-container:focus-within .search-icon { fill: var(--primary); }
@@ -100,19 +87,17 @@
     .toolbar-actions { display: flex; gap: 0.75rem; align-items: center; margin-left: auto; }
     .view-toggles { display: flex; gap: 0.25rem; background: var(--bg-surface); padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
 
-    /* --- Breadcrumbs & Folders --- */
+    /* --- Breadcrumbs & Views --- */
     .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
     .crumb { color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 0.5rem; }
     .crumb:hover { color: var(--primary); }
     .crumb.active { color: var(--text-main); cursor: default; }
-    .crumb-separator { color: var(--border); }
 
     .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-    .folder-card { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; background: var(--bg-surface); border-radius: 8px; cursor: pointer; border: 1px solid var(--border); transition: 0.2s; font-weight: 500; font-size: 0.95rem; }
+    .folder-card { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; background: var(--bg-surface); border-radius: 8px; cursor: context-menu; border: 1px solid var(--border); transition: 0.2s; font-weight: 500; font-size: 0.95rem; }
     .folder-card svg { fill: var(--primary); }
-    .folder-card:hover { background: var(--bg-surface-hover); border-color: var(--primary); }
+    .folder-card:hover { background: var(--bg-surface-hover); border-color: var(--primary); transform: translateY(-1px); }
 
-    /* --- Dynamic Views --- */
     .table-container { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; }
     th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: rgba(0,0,0,0.2); }
@@ -120,12 +105,9 @@
     tr:last-child td { border-bottom: none; }
     tr { transition: 0.2s; cursor: context-menu; }
     tr:hover td { background: var(--bg-surface-hover); }
-    
     .file-name-wrapper { display: flex; align-items: center; gap: 0.75rem; }
     .file-name-wrapper svg { fill: var(--text-muted); flex-shrink: 0; }
-    .truncate-url { max-width: 200px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; color: var(--text-muted); }
-    a { color: var(--primary); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    .truncate-url { max-width: 250px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; color: var(--text-muted); }
 
     .grid-view-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
     .grid-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; cursor: context-menu; }
@@ -136,25 +118,25 @@
     .grid-info { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
     .grid-title { font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
     .grid-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
-    
+
     /* --- Right-Click Context Menu --- */
     .context-menu { display: none; position: fixed; z-index: 10000; width: 220px; background: rgba(20, 21, 23, 0.95); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 0.5rem; flex-direction: column; }
-    .context-menu-item { padding: 0.75rem 1rem; color: var(--text-main); cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; font-weight: 500; transition: 0.2s; }
+    .context-menu-item { padding: 0.65rem 1rem; color: var(--text-main); cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; font-weight: 500; transition: 0.2s; }
     .context-menu-item svg { fill: currentColor; }
     .context-menu-item:hover { background: var(--bg-surface-hover); color: var(--primary); }
     .context-menu-item.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
     .context-divider { height: 1px; background: var(--border); margin: 0.5rem 0; }
 
     /* --- Modals --- */
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; opacity: 0; animation: fadeIn 0.2s forwards; }
-    .modal-content { background: var(--bg-surface); padding: 1.5rem; border-radius: 8px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
-    .modal-close { position: absolute; top: -16px; right: -16px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-    .modal-close:hover { background: var(--danger); color: white; border-color: var(--danger); }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; justify-content: center; align-items: center; opacity: 0; animation: fadeIn 0.2s forwards; }
+    .modal-content { background: var(--bg-surface); padding: 2rem; border-radius: 12px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+    .modal-close { position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
+    .modal-close:hover { color: var(--danger); }
+    
+    .action-box { width: 400px; text-align: left; }
+    .action-box h3 { margin-top: 0; margin-bottom: 1.5rem; color: #fff; font-family: 'Cinzel', serif; font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
+    
     .preview-media { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px; }
-    
-    .rename-box { width: 400px; max-width: 90vw; align-items: stretch; text-align: left; }
-    .rename-box h3 { margin-top: 0; margin-bottom: 1.5rem; color: #fff; font-family: 'Cinzel', serif; font-size: 1.25rem; }
-    
     .status-text { margin-top: 1rem; font-weight: 500; color: var(--primary); }
     .error-text { color: var(--danger); margin-top: 1rem; font-size: 0.9rem; }
   </style>
@@ -181,7 +163,7 @@
           <label>Security Token</label>
           <input type="password" id="loginPassword" placeholder="Enter your password" required>
         </div>
-        <button type="submit" class="primary" id="loginBtn">Authorize Access</button>
+        <button type="submit" class="primary" id="loginBtn" style="width: 100%;">Authorize Access</button>
         <div id="loginError" class="error-text"></div>
       </form>
     </div>
@@ -213,7 +195,7 @@
 
       <div class="user-profile">
         <div class="user-info">
-          <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;" id="userAvatar">S</div>
+          <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;" id="userAvatar"></div>
           <span id="userNameDisplay"></span>
         </div>
         <button class="logout-btn" onclick="logout()" title="Logout">
@@ -223,15 +205,14 @@
     </aside>
 
     <main class="main-content">
+      
       <!-- UPLOAD TAB -->
       <div id="uploadTab" class="view-section active">
         <h2 class="section-header" style="margin-bottom: 2rem;">Deploy Assets</h2>
         <div style="max-width: 600px;">
           <div class="form-group">
             <label>Destination Path</label>
-            <select id="folderSelect" onchange="toggleNewFolderInput()">
-              <option value="">-- Loading your folders --</option>
-            </select>
+            <select id="folderSelect" onchange="toggleNewFolderInput()"></select>
             <input type="text" id="newFolderInput" placeholder="Enter new folder or nested path (e.g. Promos/2026)" style="display: none; margin-top: 0.75rem;">
           </div>
 
@@ -261,11 +242,13 @@
 
       <!-- EXPLORER TAB -->
       <div id="historyTab" class="view-section" style="max-width: 100%;">
+        
         <div class="header-toolbar">
           <h2 class="section-header">Asset Explorer</h2>
+          
           <div class="search-container" id="searchContainer" style="display: none;">
             <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <input type="text" id="searchInput" class="search-input" placeholder="Search assets..." onkeyup="renderFiles()">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search files & folders..." onkeyup="renderFiles()">
           </div>
 
           <div class="toolbar-actions" id="toolbarActions" style="display: none;">
@@ -287,53 +270,65 @@
         <div class="breadcrumbs" id="breadcrumbNav"></div>
         <div id="historyFolderGrid" class="folder-grid"></div>
         <div id="historyFilesSection"></div>
-        <div style="margin-top: 1rem; color: var(--text-muted); font-size: 0.8rem; text-align: center;" id="contextHint">Right-click any asset to manage it.</div>
+        <div style="margin-top: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;" id="contextHint">Right-click any folder or file to manage it.</div>
       </div>
     </main>
   </div>
 
   <!-- Right-Click Context Menu -->
   <div id="contextMenu" class="context-menu">
-    <div class="context-menu-item" onclick="triggerContextAction('preview')">
+    <div class="context-menu-item" id="menu-preview" onclick="triggerContextAction('preview')">
       <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-      Preview Asset
+      Preview Media
     </div>
-    <div class="context-menu-item" onclick="triggerContextAction('copy')">
+    <div class="context-menu-item" id="menu-copy" onclick="triggerContextAction('copy')">
       <svg width="16" height="16" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
       Copy CDN URL
     </div>
-    <div class="context-divider"></div>
+    <div class="context-divider" id="menu-divider-1"></div>
+    
     <div class="context-menu-item" onclick="triggerContextAction('rename')">
       <svg width="16" height="16" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.69l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-      Rename Asset
+      Rename
     </div>
+    <div class="context-menu-item" onclick="triggerContextAction('move')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
+      Move to...
+    </div>
+    <div class="context-menu-item" onclick="triggerContextAction('duplicate')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm-1 12H6V5h9v8zM19 19H8v-2h11V6h2v11c0 1.1-.9 2-2 2z"/></svg>
+      Duplicate to...
+    </div>
+
+    <div class="context-divider"></div>
     <div class="context-menu-item danger" onclick="triggerContextAction('delete')">
       <svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-      Delete Permanently
+      Delete
     </div>
   </div>
 
   <!-- Preview Modal -->
-  <div class="modal-overlay" id="previewModal" onclick="closePreview(event)">
-    <div class="modal-content" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="closePreview()">✕</button>
+  <div class="modal-overlay" id="previewModal" onclick="closeModal('previewModal')">
+    <div class="modal-content" onclick="event.stopPropagation()" style="align-items: center; padding: 1rem;">
+      <button class="modal-close" onclick="closeModal('previewModal')">✕</button>
       <div id="mediaContainer"></div>
       <div id="previewFileName" style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem; font-family: monospace;"></div>
     </div>
   </div>
 
-  <!-- Rename Modal -->
-  <div class="modal-overlay" id="renameModal" onclick="closeRename(event)">
-    <div class="modal-content rename-box" onclick="event.stopPropagation()">
-      <h3>Rename Asset</h3>
+  <!-- Action Modal (Rename/Move/Duplicate) -->
+  <div class="modal-overlay" id="actionModal" onclick="closeModal('actionModal')">
+    <div class="modal-content action-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal('actionModal')">✕</button>
+      <h3 id="actionModalTitle">Manage Asset</h3>
       <div class="form-group">
-        <label>New File Name (include extension)</label>
-        <input type="text" id="renameInput">
+        <label id="actionLabel">New Name or Path</label>
+        <input type="text" id="actionInput">
       </div>
-      <div id="renameError" class="error-text"></div>
-      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
-        <button class="secondary" onclick="closeRename()">Cancel</button>
-        <button class="primary" id="executeRenameBtn" onclick="executeRename()">Save Changes</button>
+      <div id="actionError" class="error-text"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 0.5rem;">
+        <button class="secondary" onclick="closeModal('actionModal')">Cancel</button>
+        <button class="primary" id="executeActionBtn" onclick="executeAction()">Confirm</button>
       </div>
     </div>
   </div>
