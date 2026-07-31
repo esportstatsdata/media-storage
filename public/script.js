@@ -31,6 +31,9 @@ async function handleLogin(e) {
       document.getElementById('userNameDisplay').innerText = currentUser;
       document.getElementById('userAvatar').innerText = currentUser.charAt(0).toUpperCase();
       document.getElementById('loginPassword').value = '';
+      
+      // Load folders for the upload tab
+      loadFolders();
     } else {
       errorDiv.innerText = data.message || "Authentication failed.";
     }
@@ -57,12 +60,59 @@ function switchTab(tabId) {
   if(tabId === 'upload') {
     document.getElementById('nav-upload').classList.add('active');
     document.getElementById('uploadTab').classList.add('active');
+    loadFolders(); 
   } else {
     document.getElementById('nav-history').classList.add('active');
     document.getElementById('historyTab').classList.add('active');
     currentPath = ''; 
     loadDirectoryContents();
   }
+}
+
+// --- Folder Management for Upload Tab ---
+async function loadFolders() {
+  const select = document.getElementById('folderSelect');
+  if(!select) return;
+  select.innerHTML = '<option value="">Loading...</option>';
+  
+  try {
+    // Fetch root folders using the files API
+    const res = await fetch(`/api/files?user=${currentUser}`);
+    const data = await res.json();
+    
+    select.innerHTML = '<option value="new_folder">+ Create New Folder / Path</option>';
+    select.innerHTML += '<option value="">/ (Root Directory)</option>';
+    
+    if (data.folders && data.folders.length > 0) {
+      data.folders.forEach(folder => {
+        select.innerHTML += `<option value="${folder}">${folder}</option>`;
+      });
+      select.value = data.folders[0]; 
+    } else {
+      select.value = "new_folder";
+    }
+    toggleNewFolderInput();
+  } catch (error) {
+    select.innerHTML = '<option value="new_folder">+ Create New Folder / Path</option>';
+    toggleNewFolderInput();
+  }
+}
+
+function toggleNewFolderInput() {
+  const select = document.getElementById('folderSelect');
+  const input = document.getElementById('newFolderInput');
+  if(select && input) {
+    input.style.display = select.value === 'new_folder' ? 'block' : 'none';
+  }
+}
+
+function getSelectedFolder() {
+  const select = document.getElementById('folderSelect');
+  if(!select) return '';
+  if (select.value === 'new_folder') {
+    return document.getElementById('newFolderInput').value.trim();
+  }
+  return select.value; // Empty string acts as root
 }
 
 // --- Utility Functions ---
@@ -95,7 +145,6 @@ function isImageExtension(fileName) {
   return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
 }
 
-// Helper to grab only the files matching the search bar query
 function getFilteredFiles() {
   const query = document.getElementById('searchInput').value.toLowerCase();
   return currentHistoryFiles.filter(f => 
@@ -114,11 +163,10 @@ async function loadDirectoryContents(targetPath = '') {
   const toolbar = document.getElementById('toolbarActions');
   const searchContainer = document.getElementById('searchContainer');
   
-  // Reset states
   grid.innerHTML = '<span style="color: var(--text-muted)">Scanning directory...</span>';
   filesSection.innerHTML = '';
-  toolbar.style.display = 'none';
-  searchContainer.style.display = 'none';
+  if(toolbar) toolbar.style.display = 'none';
+  if(searchContainer) searchContainer.style.display = 'none';
   document.getElementById('searchInput').value = '';
   currentHistoryFiles = [];
   
@@ -142,8 +190,8 @@ async function loadDirectoryContents(targetPath = '') {
 
     // Process Files
     if (data.files && data.files.length > 0) {
-      toolbar.style.display = 'flex';
-      searchContainer.style.display = 'flex'; // Show search bar if there are files
+      if(toolbar) toolbar.style.display = 'flex';
+      if(searchContainer) searchContainer.style.display = 'flex';
       
       data.files.forEach(file => {
         const originalNameMatch = file.name.match(/^\d+-(.+)$/);
@@ -350,7 +398,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   const formatSelect = document.getElementById('formatSelect').value;
   const statusDiv = document.getElementById('status');
   const btn = document.getElementById('uploadBtn');
-  const targetFolder = document.getElementById('targetFolderInput').value.trim();
+  const targetFolder = getSelectedFolder(); // Correctly grabs dropdown or text input
   
   if (!fileInput.files.length) {
     statusDiv.innerText = "No assets selected.";
@@ -391,6 +439,9 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   btn.disabled = false;
   fileInput.value = ""; 
   updateFileMsg();
+  
+  // Refresh folder list to include any newly created paths
+  loadFolders();
 });
 
 function processFile(file, targetFormat) {
