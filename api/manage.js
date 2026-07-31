@@ -19,8 +19,11 @@ export default async function handler(req, res) {
   const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   try {
+    // FIX: Safely encode the path while preserving forward slashes
+    const encodedPath = targetPath.split('/').map(encodeURIComponent).join('/');
+    
     // 2. Fetch the target file's exact SHA and content
-    const getUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${encodeURIComponent(targetPath)}`;
+    const getUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${encodedPath}`;
     const getRes = await fetch(getUrl, { headers });
     const fileData = await getRes.json();
 
@@ -48,7 +51,9 @@ export default async function handler(req, res) {
       pathParts.pop(); // Remove old file name
       const newPath = [...pathParts, newName].join('/');
       
-      const newUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${encodeURIComponent(newPath)}`;
+      // Safely encode the new path
+      const encodedNewPath = newPath.split('/').map(encodeURIComponent).join('/');
+      const newUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${encodedNewPath}`;
 
       // Step A: Create the new file with the old content
       const putRes = await fetch(newUrl, {
