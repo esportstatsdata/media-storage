@@ -3,113 +3,181 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Studio CDN | Media Asset Manager</title>
+  <title>Cloud CDN Manager</title>
   
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff7b00'><path d='M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z'/></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <style>
     :root {
-      --bg-base: #060608;
-      --bg-surface: #0f1115;
-      --bg-surface-hover: #1a1d24;
-      --bg-panel: #13151a;
-      --border: #2a2d35;
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
+      --bg-base: #0a0a0b;
+      --bg-surface: #141517;
+      --bg-surface-hover: #1e1f22;
+      --border: #333538;
+      --text-main: #e8e8e8;
+      --text-muted: #9a9a9a;
       --primary: #ff7b00;
       --primary-hover: #e66e00;
-      --primary-alpha: rgba(255, 123, 0, 0.15);
-      --danger: #ef4444;
-      --danger-hover: #dc2626;
-      --success: #10b981;
+      --primary-alpha: rgba(255, 123, 0, 0.12);
+      --danger: #ea4335;
     }
 
-    * { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg-base); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
+    body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-base); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
 
-    /* --- Core Typography --- */
-    .brand-title { font-family: 'Cinzel', serif; font-size: 1.5rem; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px rgba(255, 123, 0, 0.3); }
+    /* --- Brand & Typography --- */
+    .brand-title { font-family: 'Cinzel', serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; }
 
-    /* --- Login Modal --- */
-    #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #1a1d24 0%, #060608 100%); z-index: 9999; position: absolute; }
-    .login-card { background: rgba(15, 17, 21, 0.85); backdrop-filter: blur(20px); padding: 3.5rem 3rem; border-radius: 12px; border: 1px solid rgba(255, 123, 0, 0.2); border-top: 4px solid var(--primary); width: 100%; max-width: 420px; box-shadow: 0 25px 50px rgba(0,0,0,0.9); text-align: center; }
-    .login-card h2 { margin: 1rem 0 0.5rem 0; font-family: 'Cinzel', serif; font-size: 2.2rem; color: #fff; }
-    .login-card p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.85rem; letter-spacing: 1.5px; text-transform: uppercase; }
+    /* --- Login Screen --- */
+    #loginScreen { 
+      display: flex; flex-direction: column; align-items: center; justify-content: center; 
+      width: 100vw; height: 100vh; background-color: var(--bg-base);
+      background-image: radial-gradient(circle at top, rgba(255, 123, 0, 0.05) 0%, transparent 40%);
+    }
+    
+    .login-card { 
+      background: var(--bg-surface); padding: 3.5rem 3rem; border-radius: 12px; 
+      border: 1px solid var(--border); border-top: 3px solid var(--primary);
+      width: 100%; max-width: 400px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); text-align: center;
+    }
+    
+    .login-card h2 { margin: 1rem 0 0.5rem 0; font-family: 'Cinzel', serif; font-size: 2rem; color: #fff; }
+    .login-card p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+    #loginForm { display: flex; flex-direction: column; gap: 1.5rem; }
+    #loginForm .form-group { margin-bottom: 0; }
 
     /* --- App Layout --- */
-    #appScreen { display: none; width: 100%; height: 100%; display: flex; }
+    #appScreen { display: none; width: 100%; height: 100%; }
     
-    .sidebar { width: 260px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; flex-shrink: 0; }
-    .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 3rem; padding-left: 0.5rem; }
+    .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; }
+    .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.5rem; padding-left: 0.5rem; }
     
-    .nav-btn { background: transparent; border: none; color: var(--text-muted); padding: 0.85rem 1rem; border-radius: 6px; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 1rem; transition: 0.2s; width: 100%; text-align: left; margin-bottom: 0.5rem; }
-    .nav-btn:hover { background: var(--bg-surface-hover); color: var(--text-main); }
-    .nav-btn.active { background: var(--primary-alpha); color: var(--primary); font-weight: 600; border-left: 3px solid var(--primary); border-radius: 0 6px 6px 0; }
+    .nav-btn { background: transparent; border: none; color: var(--text-main); padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 1rem; transition: 0.2s; width: 100%; text-align: left; margin-bottom: 0.5rem; }
+    .nav-btn:hover { background: var(--bg-surface-hover); }
+    .nav-btn.active { background: var(--primary-alpha); color: var(--primary); font-weight: 600; border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; }
+    .nav-btn.active svg { fill: var(--primary); }
 
-    .new-btn { background: var(--primary); color: #fff; border: none; padding: 1rem; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: 0.2s; margin-bottom: 2rem; width: 100%; justify-content: center; box-shadow: 0 4px 15px rgba(255,123,0,0.3); }
+    .new-btn { background: var(--primary); color: #fff; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: 0.2s; margin-bottom: 2rem; width: 100%; justify-content: center; }
     .new-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
 
-    .main-content { flex: 1; overflow-y: auto; padding: 2rem 3rem; position: relative; display: flex; flex-direction: column; }
+    .user-profile { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .user-info { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+    .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: 0.2s; }
+    .logout-btn:hover { color: var(--danger); background: rgba(234, 67, 53, 0.1); }
 
-    /* --- Forms & Inputs --- */
+    .main-content { flex: 1; overflow-y: auto; padding: 3rem 4rem; position: relative; }
+
+    /* --- UI Components --- */
     .form-group { margin-bottom: 1.5rem; text-align: left; }
-    label { font-weight: 600; display: block; margin-bottom: 0.6rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    input[type="text"], input[type="password"], select { width: 100%; padding: 0.85rem 1rem; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; font-size: 0.95rem; transition: 0.2s; }
-    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
-
-    /* --- Toolbar --- */
-    .header-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-    .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; color: #fff; margin: 0; }
+    label { font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
     
-    .search-container { display: flex; align-items: center; position: relative; flex: 1; max-width: 400px; margin-left: 2rem; }
-    .search-input { width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 24px; font-size: 0.9rem; }
-    .search-icon { position: absolute; left: 14px; fill: var(--text-muted); width: 16px; height: 16px; }
-
-    .view-toggles { display: flex; gap: 0.25rem; background: var(--bg-surface); padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
+    input[type="text"], input[type="password"], select { width: 100%; padding: 0.85rem 1rem; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; font-size: 0.95rem; font-family: inherit; transition: 0.2s; box-sizing: border-box; }
+    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
+    
+    .file-drop-area { border: 2px dashed var(--border); border-radius: 8px; padding: 3rem 2rem; text-align: center; background: var(--bg-surface); cursor: pointer; transition: 0.2s; position: relative; }
+    .file-drop-area:hover { border-color: var(--primary); background: var(--primary-alpha); }
+    .file-drop-area input[type="file"] { position: absolute; left: 0; top: 0; height: 100%; width: 100%; opacity: 0; cursor: pointer; }
+    .file-msg { color: var(--text-muted); font-size: 0.95rem; display: block; margin-top: 1rem; }
+    
+    button.primary { background: var(--primary); color: #fff; border: none; padding: 0.85rem 1.5rem; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.95rem; transition: 0.2s; width: max-content; }
+    .login-card button.primary { width: 100%; font-size: 1rem; padding: 1rem; }
+    button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+    
+    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; transition: 0.2s; }
+    button.secondary:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-alpha); }
+    
     .icon-btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); cursor: pointer; padding: 0.4rem; border-radius: 4px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
     .icon-btn:hover { color: var(--primary); background: var(--primary-alpha); }
     .icon-btn.active-view { color: var(--primary); background: var(--primary-alpha); border-color: var(--primary); }
 
-    /* --- Breadcrumbs --- */
-    .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; padding: 0.75rem 1.25rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-weight: 500; }
+    .view-section { display: none; max-width: 1100px; margin: 0 auto; }
+    .view-section.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    
+    .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; color: #fff; margin: 0; }
+    
+    /* --- Toolbar & Search Bar --- */
+    .header-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+    
+    .search-container { display: flex; align-items: center; position: relative; flex: 1; max-width: 350px; margin-left: 2rem; }
+    .search-container:focus-within .search-icon { fill: var(--primary); }
+    
+    /* Increased CSS specificity to prevent generic input styles from breaking the alignment */
+    input[type="text"].search-input { 
+      width: 100%; 
+      padding: 0.65rem 1rem 0.65rem 2.75rem; 
+      background: var(--bg-surface); 
+      border: 1px solid var(--border); 
+      color: var(--text-main); 
+      border-radius: 24px; 
+      font-size: 0.9rem; 
+      transition: all 0.2s ease; 
+    }
+    input[type="text"].search-input:focus { 
+      outline: none; 
+      border-color: var(--primary); 
+      box-shadow: 0 0 0 2px var(--primary-alpha); 
+      background: var(--bg-base); 
+    }
+    .search-icon { 
+      position: absolute; 
+      left: 14px; 
+      fill: var(--text-muted); 
+      width: 18px; 
+      height: 18px; 
+      pointer-events: none; 
+      transition: fill 0.2s ease;
+    }
+
+    .toolbar-actions { display: flex; gap: 0.75rem; align-items: center; margin-left: auto; }
+    .view-toggles { display: flex; gap: 0.25rem; background: var(--bg-surface); padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
+
+    /* --- Explorer Breadcrumbs & Folders --- */
+    .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
     .crumb { color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 0.5rem; }
     .crumb:hover { color: var(--primary); }
+    .crumb.active { color: var(--text-main); cursor: default; }
+    .crumb-separator { color: var(--border); }
 
-    /* --- List View --- */
+    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .folder-card { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; background: var(--bg-surface); border-radius: 8px; cursor: pointer; border: 1px solid var(--border); transition: 0.2s; font-weight: 500; font-size: 0.95rem; }
+    .folder-card svg { fill: var(--primary); }
+    .folder-card:hover { background: var(--bg-surface-hover); border-color: var(--primary); }
+
+    /* --- Dynamic Views --- */
     .table-container { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
-    th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px; background: var(--bg-panel); }
-    td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; }
+    th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: rgba(0,0,0,0.2); }
+    td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
     tr:hover td { background: var(--bg-surface-hover); }
-    .file-row { cursor: pointer; transition: 0.2s; }
-    .file-row.selected { background: var(--primary-alpha) !important; }
+    
+    .file-name-wrapper { display: flex; align-items: center; gap: 0.75rem; }
+    .file-name-wrapper svg { fill: var(--text-muted); flex-shrink: 0; }
+    .truncate-url { max-width: 200px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; color: var(--text-muted); }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
-    /* --- Right Inspector Panel --- */
-    .inspector-panel { width: 320px; background: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; transform: translateX(100%); display: none; transition: transform 0.3s ease; overflow-y: auto; }
-    .inspector-panel.open { display: flex; transform: translateX(0); animation: slideIn 0.3s forwards; }
-    @keyframes slideIn { to { transform: translateX(0); } }
+    .grid-view-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
+    .grid-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; }
+    .grid-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+    .grid-preview { height: 140px; background: var(--bg-base); display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
+    .grid-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .grid-preview svg { width: 48px; height: 48px; fill: var(--text-muted); opacity: 0.5; }
+    .grid-info { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .grid-title { font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+    .grid-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .grid-actions { display: flex; justify-content: flex-end; gap: 0.25rem; margin-top: 0.5rem; }
     
-    .inspector-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .inspector-header h3 { margin: 0; font-size: 1rem; color: #fff; }
-    .inspector-preview { width: 100%; height: 200px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
-    .inspector-preview img, .inspector-preview video { max-width: 100%; max-height: 100%; object-fit: contain; }
+    /* --- Modal --- */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; opacity: 0; animation: fadeIn 0.2s forwards; }
+    .modal-content { background: var(--bg-surface); padding: 1rem; border-radius: 8px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+    .modal-close { position: absolute; top: -16px; right: -16px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .modal-close:hover { background: var(--danger); color: white; border-color: var(--danger); }
+    .preview-media { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px; }
     
-    .inspector-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
-    .meta-group { display: flex; flex-direction: column; gap: 0.25rem; }
-    .meta-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .meta-value { font-size: 0.9rem; color: var(--text-main); word-break: break-all; }
-    
-    .inspector-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
-    .action-btn { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); padding: 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: 0.2s; }
-    .action-btn:hover { background: var(--bg-surface-hover); border-color: var(--primary); color: var(--primary); }
-    .action-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.1); }
-
-    /* --- Modals --- */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center; }
-    .modal-content { background: var(--bg-surface); padding: 2rem; border-radius: 8px; width: 100%; max-width: 400px; border: 1px solid var(--border); }
-    .modal-content h3 { margin-top: 0; margin-bottom: 1.5rem; font-size: 1.25rem; }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
+    .status-text { margin-top: 1rem; font-weight: 500; color: var(--primary); }
+    .error-text { color: var(--danger); margin-top: 1rem; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -117,9 +185,9 @@
   <!-- Login Modal -->
   <div id="loginScreen">
     <div class="login-card">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--primary)" style="margin-bottom: 1rem;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
       <h2>Studio CDN</h2>
-      <p>Master Control</p>
+      <p>Asset Management Portal</p>
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
           <label>Operator Profile</label>
@@ -132,15 +200,15 @@
         </div>
         <div class="form-group">
           <label>Security Token</label>
-          <input type="password" id="loginPassword" placeholder="Enter authentication key" required>
+          <input type="password" id="loginPassword" placeholder="Enter your password" required>
         </div>
-        <button type="submit" class="new-btn" id="loginBtn">Initialize Session</button>
-        <div id="loginError" style="color: var(--danger); font-size: 0.85rem; margin-top: 1rem;"></div>
+        <button type="submit" class="primary" id="loginBtn">Authorize Access</button>
+        <div id="loginError" class="error-text"></div>
       </form>
     </div>
   </div>
 
-  <!-- Main UI -->
+  <!-- Main Drive UI -->
   <div id="appScreen">
     <aside class="sidebar">
       <div class="brand">
@@ -150,15 +218,15 @@
       
       <button class="new-btn" onclick="switchTab('upload')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-        Ingest Assets
+        New Deployment
       </button>
 
       <nav>
-        <button class="nav-btn" id="nav-upload" onclick="switchTab('upload')">
+        <button class="nav-btn active" id="nav-upload" onclick="switchTab('upload')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-          Ingestion Deck
+          Upload Center
         </button>
-        <button class="nav-btn active" id="nav-history" onclick="switchTab('history')">
+        <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
           Asset Library
         </button>
@@ -166,122 +234,101 @@
 
       <div class="user-profile">
         <div class="user-info">
-          <div style="width: 28px; height: 28px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;" id="userAvatar"></div>
+          <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;" id="userAvatar">S</div>
           <span id="userNameDisplay"></span>
         </div>
-        <button class="logout-btn" onclick="logout()" title="End Session">
+        <button class="logout-btn" onclick="logout()" title="Logout">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
         </button>
       </div>
     </aside>
 
-    <main class="main-content" id="mainContentArea">
+    <main class="main-content">
       
       <!-- UPLOAD TAB -->
-      <div id="uploadTab" style="display: none; max-width: 600px;">
-        <h2 class="section-header" style="margin-bottom: 2rem;">Ingest New Assets</h2>
-        
-        <div class="form-group">
-          <label>Target Directory</label>
-          <select id="folderSelect" onchange="toggleNewFolderInput()"></select>
-          <input type="text" id="newFolderInput" placeholder="e.g. Broadcast/Show_1/Lower_Thirds" style="display: none; margin-top: 0.75rem;">
-        </div>
-
-        <div class="form-group">
-          <label>Format Transcoding</label>
-          <select id="formatSelect">
-            <option value="original">Keep Original Container</option>
-            <option value="webp">Transcode to WEBP (Optimal)</option>
-            <option value="png">Transcode to PNG (Lossless)</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Payload</label>
-          <div class="file-drop-area">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="var(--primary)" style="margin-bottom: 1rem;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-            <div style="font-weight: 500; color: var(--text-main);">Drop assets here</div>
-            <span class="file-msg" id="fileMsg">or click to browse local storage</span>
-            <input type="file" id="fileInput" accept="image/*,video/*" multiple onchange="updateFileMsg()">
+      <div id="uploadTab" class="view-section active">
+        <h2 class="section-header" style="margin-bottom: 2rem;">Deploy Assets</h2>
+        <div style="max-width: 600px;">
+          <div class="form-group">
+            <label>Destination Path</label>
+            <select id="folderSelect" onchange="toggleNewFolderInput()">
+              <option value="">-- Loading your folders --</option>
+            </select>
+            <input type="text" id="newFolderInput" placeholder="Enter new folder or nested path (e.g. Promos/2026)" style="display: none; margin-top: 0.75rem;">
           </div>
-        </div>
 
-        <button id="uploadBtn" class="new-btn" style="width: auto;">Deploy to Network</button>
-        <div id="status" style="margin-top: 1rem; color: var(--primary); font-weight: 500;"></div>
+          <div class="form-group">
+            <label>Format Optimization</label>
+            <select id="formatSelect">
+              <option value="original">Keep Original Format</option>
+              <option value="webp">Force WEBP Conversion (Images)</option>
+              <option value="png">Force PNG Conversion (Images)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Select Assets</label>
+            <div class="file-drop-area">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="var(--primary)" style="margin-bottom: 1rem;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+              <div style="font-weight: 500; color: var(--text-main);">Drop files to deploy</div>
+              <span class="file-msg" id="fileMsg">or click to browse local storage</span>
+              <input type="file" id="fileInput" accept="image/*,video/*" multiple onchange="updateFileMsg()">
+            </div>
+          </div>
+
+          <button id="uploadBtn" class="primary">Push to CDN</button>
+          <div id="status" class="status-text"></div>
+        </div>
       </div>
 
       <!-- EXPLORER TAB -->
-      <div id="historyTab" style="display: block; width: 100%;">
+      <div id="historyTab" class="view-section" style="max-width: 100%;">
+        
         <div class="header-toolbar">
           <h2 class="section-header">Asset Explorer</h2>
           
-          <div class="search-container" id="searchContainer">
+          <!-- Upgraded Search Bar -->
+          <div class="search-container" id="searchContainer" style="display: none;">
             <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <input type="text" id="searchInput" class="search-input" placeholder="Query assets..." onkeyup="renderFiles()">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search assets..." onkeyup="renderFiles()">
+          </div>
+
+          <div class="toolbar-actions" id="toolbarActions" style="display: none;">
+            <div class="view-toggles">
+              <button class="icon-btn active-view" id="btn-view-list" onclick="changeViewMode('list')" title="List View">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+              </button>
+              <button class="icon-btn" id="btn-view-grid" onclick="changeViewMode('grid')" title="Grid View">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm7 0h5v-6h-5v6zm7 0h5v-6h-5v6zm-7-13v6h5V5h-5zm7 0v6h5V5h-5z"/></svg>
+              </button>
+            </div>
+            
+            <button id="historyCsvBtn" class="secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Export
+            </button>
           </div>
         </div>
         
-        <div class="breadcrumbs" id="breadcrumbNav"></div>
-        
-        <div id="historyFilesSection">
-          <!-- Populated by JS -->
+        <div class="breadcrumbs" id="breadcrumbNav">
+          <!-- Injected via JS -->
         </div>
+        
+        <div id="historyFolderGrid" class="folder-grid"></div>
+        
+        <!-- Dynamic Rendering Container -->
+        <div id="historyFilesSection"></div>
+        
       </div>
     </main>
-
-    <!-- RIGHT PANEL: Asset Inspector -->
-    <aside class="inspector-panel" id="inspectorPanel">
-      <div class="inspector-header">
-        <h3>Asset Details</h3>
-        <button class="icon-btn" onclick="closeInspector()">✕</button>
-      </div>
-      <div class="inspector-preview" id="inspectorPreview"></div>
-      
-      <div class="inspector-body">
-        <div class="meta-group">
-          <span class="meta-label">Original Name</span>
-          <span class="meta-value" id="inspectName" style="font-weight: 600;">--</span>
-        </div>
-        <div class="meta-group">
-          <span class="meta-label">System Architecture ID</span>
-          <span class="meta-value" id="inspectId" style="font-family: monospace; color: var(--text-muted);">--</span>
-        </div>
-        <div class="meta-group">
-          <span class="meta-label">File Size</span>
-          <span class="meta-value" id="inspectSize">--</span>
-        </div>
-        <div class="meta-group">
-          <span class="meta-label">CDN Endpoint</span>
-          <a href="#" target="_blank" class="meta-value" id="inspectUrl" style="color: var(--primary); text-decoration: none;">--</a>
-        </div>
-
-        <div class="inspector-actions">
-          <button class="action-btn" onclick="openRenameModal()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.69l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            Rename
-          </button>
-          <button class="action-btn danger" onclick="confirmDelete()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            Delete
-          </button>
-        </div>
-      </div>
-    </aside>
   </div>
 
-  <!-- Rename Modal -->
-  <div class="modal-overlay" id="renameModal">
-    <div class="modal-content">
-      <h3>Rename Asset</h3>
-      <div class="form-group">
-        <label>New Name (include extension)</label>
-        <input type="text" id="renameInput">
-      </div>
-      <div id="renameError" style="color: var(--danger); font-size: 0.85rem; margin-bottom: 1rem;"></div>
-      <div class="modal-actions">
-        <button class="action-btn" style="border: none; background: transparent;" onclick="document.getElementById('renameModal').style.display='none'">Cancel</button>
-        <button class="action-btn" style="background: var(--primary); color: #fff; border: none;" id="executeRenameBtn" onclick="executeRename()">Confirm</button>
-      </div>
+  <!-- Preview Modal -->
+  <div class="modal-overlay" id="previewModal" onclick="closePreview(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closePreview()">✕</button>
+      <div id="mediaContainer"></div>
+      <div id="previewFileName" style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem; font-family: monospace;"></div>
     </div>
   </div>
 
