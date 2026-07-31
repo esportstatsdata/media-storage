@@ -9,7 +9,7 @@ async function handleLogin(e) {
   const btn = document.getElementById('loginBtn');
   const errorDiv = document.getElementById('loginError');
   
-  btn.innerText = "Authenticating...";
+  btn.innerText = "Authorizing...";
   btn.disabled = true;
   errorDiv.innerText = "";
 
@@ -38,7 +38,7 @@ async function handleLogin(e) {
     errorDiv.innerText = "Network error. Please try again.";
   }
   
-  btn.innerText = "Sign In";
+  btn.innerText = "Authorize Access";
   btn.disabled = false;
 }
 
@@ -176,6 +176,7 @@ async function loadHistoryFiles(folder, cardElement) {
     tbody.innerHTML = '';
     const fileIcon = `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
     const copyIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
+    const previewIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
 
     data.files.forEach(file => {
       const originalNameMatch = file.name.match(/^\d+-(.+)$/);
@@ -187,7 +188,6 @@ async function loadHistoryFiles(folder, cardElement) {
         url: file.url
       });
 
-      // HTML structure changed: Wrapped in a div to fix TD flexbox alignment bug
       tbody.innerHTML += `
         <tr>
           <td>
@@ -198,8 +198,11 @@ async function loadHistoryFiles(folder, cardElement) {
           </td>
           <td style="color: var(--text-muted); font-size: 0.85rem; font-family: monospace;">${file.name}</td>
           <td>
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <a href="${file.url}" target="_blank" class="truncate-url" title="${file.url}">${file.url}</a>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <a href="${file.url}" target="_blank" class="truncate-url" title="${file.url}" style="margin-right: auto;">${file.url}</a>
+              <button class="icon-btn" onclick="openPreview('${file.url}', '${file.name}')" title="Preview Asset">
+                ${previewIcon}
+              </button>
               <button class="icon-btn" onclick="copyToClipboard('${file.url}', this)" title="Copy URL">
                 ${copyIcon}
               </button>
@@ -216,12 +219,43 @@ async function loadHistoryFiles(folder, cardElement) {
   }
 }
 
+// --- Preview Modal Logic ---
+function openPreview(url, fileName) {
+  const modal = document.getElementById('previewModal');
+  const container = document.getElementById('mediaContainer');
+  const nameLabel = document.getElementById('previewFileName');
+  
+  nameLabel.innerText = fileName;
+  container.innerHTML = '<span style="color: var(--text-muted);">Loading preview...</span>';
+  modal.style.display = 'flex';
+  
+  const ext = fileName.split('.').pop().toLowerCase();
+  const videoExts = ['mp4', 'webm', 'ogg', 'mov'];
+  
+  if (videoExts.includes(ext)) {
+    container.innerHTML = `<video controls autoplay class="preview-media" src="${url}"></video>`;
+  } else {
+    const img = new Image();
+    img.onload = () => container.innerHTML = `<img src="${url}" class="preview-media" alt="${fileName}">`;
+    img.onerror = () => container.innerHTML = '<span style="color: var(--danger);">Preview not available for this file type.</span>';
+    img.src = url;
+  }
+}
+
+function closePreview(e) {
+  // Close if clicking outside the content block, or if calling directly from close button
+  if (e && e.target.id !== 'previewModal' && !e.target.classList.contains('modal-close')) return;
+  const modal = document.getElementById('previewModal');
+  const container = document.getElementById('mediaContainer');
+  modal.style.display = 'none';
+  container.innerHTML = ''; // This stops video playback instantly when closed
+}
+
 // --- Workflow Tools ---
 async function copyToClipboard(text, buttonElement) {
   try {
     await navigator.clipboard.writeText(text);
     const originalHTML = buttonElement.innerHTML;
-    // Show a checkmark temporarily
     buttonElement.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="var(--primary)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
     setTimeout(() => {
       buttonElement.innerHTML = originalHTML;
@@ -302,7 +336,6 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   statusDiv.innerText = `Deployment Complete: ${successCount} asset(s) successfully pushed to ${targetFolder}.`;
   btn.disabled = false;
   
-  // Reset UI
   fileInput.value = ""; 
   updateFileMsg();
 });
