@@ -1,6 +1,7 @@
 let currentUser = null;
-let currentPath = ''; // Tracks nested folder depth
+let currentPath = ''; 
 let currentHistoryFiles = [];
+let viewMode = 'list'; // Default state: 'list', 'compact', or 'grid'
 
 // --- Authentication ---
 async function handleLogin(e) {
@@ -59,12 +60,12 @@ function switchTab(tabId) {
   } else {
     document.getElementById('nav-history').classList.add('active');
     document.getElementById('historyTab').classList.add('active');
-    currentPath = ''; // Reset to root when opening explorer
+    currentPath = ''; 
     loadDirectoryContents();
   }
 }
 
-// --- Utility: File Size Formatter ---
+// --- Utility Functions ---
 function formatBytes(bytes, decimals = 2) {
   if (!bytes || bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -89,19 +90,23 @@ function updateFileMsg() {
   }
 }
 
-// --- Explorer Engine (Nested Folders) ---
+function isImageExtension(fileName) {
+  const ext = fileName.split('.').pop().toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
+}
+
+// --- Explorer Engine ---
 async function loadDirectoryContents(targetPath = '') {
   currentPath = targetPath;
   renderBreadcrumbs();
   
   const grid = document.getElementById('historyFolderGrid');
   const filesSection = document.getElementById('historyFilesSection');
-  const tbody = document.getElementById('historyTableBody');
-  const csvBtn = document.getElementById('historyCsvBtn');
+  const toolbar = document.getElementById('toolbarActions');
   
   grid.innerHTML = '<span style="color: var(--text-muted)">Scanning directory...</span>';
-  filesSection.style.display = 'none';
-  csvBtn.style.display = 'none';
+  filesSection.innerHTML = '';
+  toolbar.style.display = 'none';
   currentHistoryFiles = [];
   
   try {
@@ -117,50 +122,27 @@ async function loadDirectoryContents(targetPath = '') {
         const div = document.createElement('div');
         div.className = 'folder-card';
         div.innerHTML = `${folderIcon} <span>${folder}</span>`;
-        // Handle nested path concatenation
         div.onclick = () => loadDirectoryContents(currentPath ? `${currentPath}/${folder}` : folder);
         grid.appendChild(div);
       });
     }
 
-    // Render Files
+    // Process Files
     if (data.files && data.files.length > 0) {
-      filesSection.style.display = 'block';
-      csvBtn.style.display = 'inline-flex';
-      tbody.innerHTML = '';
-      
-      const fileIcon = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
-      const copyIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
-      const previewIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
-
+      toolbar.style.display = 'flex';
       data.files.forEach(file => {
         const originalNameMatch = file.name.match(/^\d+-(.+)$/);
         const originalName = originalNameMatch ? originalNameMatch[1] : file.name;
-
+        
         currentHistoryFiles.push({
+          rawName: file.name,
           originalName: originalName,
           size: file.size,
           url: file.url
         });
-
-        tbody.innerHTML += `
-          <tr>
-            <td>
-              <div class="file-name-wrapper">
-                ${fileIcon} <span style="font-weight: 500;">${originalName}</span>
-              </div>
-            </td>
-            <td style="color: var(--text-muted);">${formatBytes(file.size)}</td>
-            <td>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <a href="${file.url}" target="_blank" class="truncate-url" title="${file.url}" style="margin-right: auto;">${file.url}</a>
-                <button class="icon-btn" onclick="openPreview('${file.url}', '${file.name}')" title="Preview Asset">${previewIcon}</button>
-                <button class="icon-btn" onclick="copyToClipboard('${file.url}', this)" title="Copy URL">${copyIcon}</button>
-              </div>
-            </td>
-          </tr>
-        `;
       });
+      
+      renderFiles(); // Call the renderer
     }
     
     if (data.folders.length === 0 && data.files.length === 0) {
@@ -170,6 +152,96 @@ async function loadDirectoryContents(targetPath = '') {
   } catch (error) {
     grid.innerHTML = '<span style="color: var(--danger);">Directory access failed.</span>';
   }
+}
+
+// --- Dynamic View Renderer ---
+function changeViewMode(mode) {
+  viewMode = mode;
+  document.getElementById('btn-view-list').classList.remove('active-view');
+  document.getElementById('btn-view-compact').classList.remove('active-view');
+  document.getElementById('btn-view-grid').classList.remove('active-view');
+  document.getElementById(`btn-view-${mode}`).classList.add('active-view');
+  renderFiles();
+}
+
+function renderFiles() {
+  const container = document.getElementById('historyFilesSection');
+  if (currentHistoryFiles.length === 0) return;
+
+  const fileIcon = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
+  const genericIconLarge = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>`;
+  const copyIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
+  const previewIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
+
+  let html = '';
+
+  if (viewMode === 'list' || viewMode === 'compact') {
+    const compactClass = viewMode === 'compact' ? 'compact' : '';
+    html = `
+      <div class="table-container ${compactClass}">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 35%;">Asset Name</th>
+              <th style="width: 15%;">Size</th>
+              <th>CDN Endpoint</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    currentHistoryFiles.forEach(file => {
+      html += `
+        <tr>
+          <td>
+            <div class="file-name-wrapper">
+              ${fileIcon} <span style="font-weight: 500;">${file.originalName}</span>
+            </div>
+          </td>
+          <td style="color: var(--text-muted);">${formatBytes(file.size)}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <a href="${file.url}" target="_blank" class="truncate-url" title="${file.url}" style="margin-right: auto;">${file.url}</a>
+              <button class="icon-btn" onclick="openPreview('${file.url}', '${file.rawName}')" title="Preview">${previewIcon}</button>
+              <button class="icon-btn" onclick="copyToClipboard('${file.url}', this)" title="Copy URL">${copyIcon}</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+    
+    html += `</tbody></table></div>`;
+    
+  } else if (viewMode === 'grid') {
+    html = `<div class="grid-view-container">`;
+    
+    currentHistoryFiles.forEach(file => {
+      const isImg = isImageExtension(file.rawName);
+      const previewBlock = isImg 
+        ? `<img src="${file.url}" alt="${file.originalName}" loading="lazy">` 
+        : genericIconLarge;
+        
+      html += `
+        <div class="grid-card">
+          <div class="grid-preview">${previewBlock}</div>
+          <div class="grid-info">
+            <div class="grid-title" title="${file.originalName}">${file.originalName}</div>
+            <div class="grid-meta">
+              <span>${formatBytes(file.size)}</span>
+              <div class="grid-actions">
+                <button class="icon-btn" onclick="openPreview('${file.url}', '${file.rawName}')" title="Preview">${previewIcon}</button>
+                <button class="icon-btn" onclick="copyToClipboard('${file.url}', this)" title="Copy URL">${copyIcon}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
 }
 
 // --- Breadcrumb Renderer ---
@@ -193,7 +265,6 @@ function renderBreadcrumbs() {
     if (index === parts.length - 1) {
       html += `<span class="crumb active">${part}</span>`;
     } else {
-      // Capture the current state of accumulatedPath for the onclick handler
       const target = accumulatedPath;
       html += `<span class="crumb" onclick="loadDirectoryContents('${target}')">${part}</span>`;
     }
