@@ -243,12 +243,11 @@ function openPreview(url, fileName) {
 }
 
 function closePreview(e) {
-  // Close if clicking outside the content block, or if calling directly from close button
   if (e && e.target.id !== 'previewModal' && !e.target.classList.contains('modal-close')) return;
   const modal = document.getElementById('previewModal');
   const container = document.getElementById('mediaContainer');
   modal.style.display = 'none';
-  container.innerHTML = ''; // This stops video playback instantly when closed
+  container.innerHTML = ''; 
 }
 
 // --- Workflow Tools ---
