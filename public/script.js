@@ -1,66 +1,110 @@
+let uploadedAssets = [];
+
 document.getElementById('uploadBtn').addEventListener('click', async () => {
-  const owner = document.getElementById('repoOwner').value.trim();
-  const repo = document.getElementById('repoName').value.trim();
   const fileInput = document.getElementById('fileInput');
   const statusDiv = document.getElementById('status');
   const btn = document.getElementById('uploadBtn');
-  const resultContainer = document.getElementById('resultContainer');
+  const tableBody = document.getElementById('tableBody');
+  const resultsContainer = document.getElementById('resultsContainer');
+  const csvBtn = document.getElementById('csvBtn');
   
-  if (!owner || !repo || !fileInput.files.length) {
-    statusDiv.innerText = "Please fill in all fields and select a file.";
+  if (!fileInput.files.length) {
+    statusDiv.innerText = "Please select at least one file.";
+    statusDiv.style.color = "red";
     return;
   }
 
-  const file = fileInput.files[0];
-  const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-  
-  statusDiv.innerText = "";
-  btn.innerText = "Uploading...";
   btn.disabled = true;
-  resultContainer.style.display = "none";
+  resultsContainer.style.display = "block";
+  statusDiv.style.color = "#333";
+  
+  const files = Array.from(fileInput.files);
+  let successCount = 0;
 
-  try {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
+  // Process files sequentially to avoid rate-limiting
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    statusDiv.innerText = `Uploading ${i + 1} of ${files.length}: ${file.name}...`;
     
-    reader.onloadend = async () => {
-      const base64Content = reader.result.split(',')[1];
+    const timestampedName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    
+    try {
+      const base64Content = await readFileAsBase64(file);
 
-      // Call our secure Vercel Serverless Function instead of GitHub directly
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileData: base64Content,
-          fileName: fileName,
-          repoOwner: owner,
-          repoName: repo
+          fileName: timestampedName
         })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        document.getElementById('cdnLink').href = data.url;
-        document.getElementById('cdnLink').innerText = data.url;
+        // Save to our array for the CSV export
+        uploadedAssets.push({
+          originalName: file.name,
+          cdnUrl: data.url
+        });
+
+        // Add row to the live table
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${file.name}</td>
+          <td><a href="${data.url}" target="_blank">${data.url}</a></td>
+        `;
+        tableBody.appendChild(row);
         
-        if (file.type.startsWith('image/')) {
-          document.getElementById('previewContainer').innerHTML = `<img src="${data.url}" alt="Uploaded file">`;
-        } else {
-          document.getElementById('previewContainer').innerHTML = `<p><em>Video uploaded successfully.</em></p>`;
-        }
-        
-        resultContainer.style.display = "block";
+        successCount++;
+        csvBtn.style.display = "inline-block"; // Show CSV button once we have data
       } else {
-        statusDiv.innerText = `Error: ${data.message}`;
+        console.error(`Failed to upload ${file.name}:`, data.message);
       }
-      
-      btn.innerText = "Upload to GitHub";
-      btn.disabled = false;
-    };
-  } catch (error) {
-    statusDiv.innerText = "A network error occurred.";
-    btn.innerText = "Upload to GitHub";
-    btn.disabled = false;
+    } catch (error) {
+      console.error(`Network error on ${file.name}:`, error);
+    }
   }
+
+  statusDiv.innerText = `Upload complete! ${successCount} of ${files.length} files successfully uploaded.`;
+  btn.disabled = false;
+  fileInput.value = ""; // Clear input for the next batch
+});
+
+// Helper function to read files
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// CSV Generation Logic
+document.getElementById('csvBtn').addEventListener('click', () => {
+  if (uploadedAssets.length === 0) return;
+
+  // Create CSV headers
+  let csvContent = "File Name,CDN Link\n";
+  
+  // Append data rows
+  uploadedAssets.forEach(asset => {
+    // Wrap names in quotes in case they contain commas
+    csvContent += `"${asset.originalName}","${asset.cdnUrl}"\n`;
+  });
+
+  // Trigger download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute("href", url);
+  link.setAttribute("download", `cdn_links_${Date.now()}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 });
