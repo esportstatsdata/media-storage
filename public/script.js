@@ -1,13 +1,46 @@
 let currentUser = null;
 let currentHistoryFiles = [];
 
-// --- Navigation & Auth ---
-function login(name) {
-  currentUser = name;
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appScreen').style.display = 'block';
-  document.getElementById('userNameDisplay').innerText = currentUser;
-  loadFolders();
+// --- Authentication ---
+async function handleLogin(e) {
+  e.preventDefault();
+  const user = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  const errorDiv = document.getElementById('loginError');
+  
+  btn.innerText = "Authenticating...";
+  btn.disabled = true;
+  errorDiv.innerText = "";
+
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      // Login successful
+      currentUser = user;
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display = 'block';
+      document.getElementById('userNameDisplay').innerText = currentUser;
+      
+      // Clear password field for security
+      document.getElementById('loginPassword').value = '';
+      loadFolders();
+    } else {
+      errorDiv.innerText = data.message || "Authentication failed.";
+    }
+  } catch (err) {
+    errorDiv.innerText = "Network error. Please try again.";
+  }
+  
+  btn.innerText = "Secure Login";
+  btn.disabled = false;
 }
 
 function logout() {
@@ -16,8 +49,10 @@ function logout() {
   document.getElementById('loginScreen').style.display = 'block';
   document.getElementById('historyFilesSection').style.display = 'none';
   document.getElementById('status').innerText = '';
+  document.getElementById('loginUser').value = '';
 }
 
+// --- Navigation ---
 function switchTab(tabId) {
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
@@ -81,7 +116,7 @@ async function loadHistoryFolders() {
     const data = await res.json();
     
     if (!data.folders || data.folders.length === 0) {
-      grid.innerHTML = '<p>No uploads found yet.</p>';
+      grid.innerHTML = '<p style="color: var(--text-muted)">No uploads found yet.</p>';
       return;
     }
 
@@ -94,7 +129,7 @@ async function loadHistoryFolders() {
       grid.appendChild(div);
     });
   } catch (error) {
-    grid.innerHTML = '<p>Error loading folders.</p>';
+    grid.innerHTML = '<p style="color: #ef4444;">Error loading folders.</p>';
   }
 }
 
@@ -109,7 +144,7 @@ async function loadHistoryFiles(folder, cardElement) {
   
   section.style.display = 'block';
   csvBtn.style.display = 'none'; 
-  tbody.innerHTML = '<tr><td colspan="3">Loading files...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted);">Loading files...</td></tr>';
   
   currentHistoryFiles = [];
   
@@ -118,7 +153,7 @@ async function loadHistoryFiles(folder, cardElement) {
     const data = await res.json();
     
     if (!data.files || data.files.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3">No files in this folder.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted);">No files in this folder.</td></tr>';
       return;
     }
 
@@ -145,7 +180,7 @@ async function loadHistoryFiles(folder, cardElement) {
     csvBtn.style.display = 'inline-block';
     
   } catch (error) {
-    tbody.innerHTML = '<tr><td colspan="3" style="color:red;">Error fetching files.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color: #ef4444;">Error fetching files.</td></tr>';
   }
 }
 
@@ -184,12 +219,12 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   
   if (!fileInput.files.length) {
     statusDiv.innerText = "Please select at least one file.";
-    statusDiv.style.color = "red";
+    statusDiv.style.color = "#ef4444";
     return;
   }
 
   btn.disabled = true;
-  statusDiv.style.color = "#333";
+  statusDiv.style.color = "var(--primary)";
   const files = Array.from(fileInput.files);
   let successCount = 0;
 
@@ -221,7 +256,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
     }
   }
 
-  statusDiv.innerText = `Complete! ${successCount} of ${files.length} files successfully uploaded to ${targetFolder}.`;
+  statusDiv.innerText = `Deploy Complete! ${successCount} of ${files.length} assets successfully processed.`;
   btn.disabled = false;
   fileInput.value = ""; 
 });
