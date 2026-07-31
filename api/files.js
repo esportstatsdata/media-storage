@@ -9,7 +9,9 @@ export default async function handler(req, res) {
   const repoName = process.env.GITHUB_REPO;
 
   const safeUser = user?.toLowerCase();
-  if (safeUser !== 'shivam' && safeUser !== 'aninda') {
+  const allowedUsers = ['shivam', 'aninda', 'rahul']; 
+  
+  if (!allowedUsers.includes(safeUser)) {
     return res.status(403).json({ message: 'Unauthorized user profile.' });
   }
 
@@ -21,7 +23,6 @@ export default async function handler(req, res) {
       const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/images/${safeUser}`;
       const response = await fetch(url, { headers });
       
-      // 404 means the user hasn't uploaded anything yet, so the folder doesn't exist.
       if (response.status === 404) return res.status(200).json({ folders: [] });
       if (!response.ok) throw new Error('Failed to fetch folders');
       
