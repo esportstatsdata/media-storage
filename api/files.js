@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { user, path = '' } = req.query;
+  const { user, path = '', action } = req.query;
   const token = process.env.GITHUB_TOKEN;
   const repoOwner = process.env.GITHUB_OWNER;
   const repoName = process.env.GITHUB_REPO;
@@ -17,6 +17,29 @@ export default async function handler(req, res) {
 
   const headers = { 'Authorization': `Bearer ${token}` };
 
+  // --- NEW: Fetch Entire Folder Tree ---
+  if (action === 'getAllFolders') {
+    try {
+      // ?recursive=1 fetches the entire repository structure instantly
+      const url = `https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/main?recursive=1`;
+      const response = await fetch(url, { headers });
+      if (!response.ok) throw new Error('Failed to fetch tree map');
+      
+      const data = await response.json();
+      const prefix = `images/${safeUser}/`;
+      
+      // Filter for directories belonging to the current user
+      const folders = data.tree
+        .filter(item => item.type === 'tree' && item.path.startsWith(prefix))
+        .map(item => item.path.substring(prefix.length)); // Remove user prefix
+
+      return res.status(200).json({ folders });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  }
+
+  // --- Standard Directory Fetch ---
   const cleanPath = path.replace(/^\/|\/$/g, '');
   const fullPath = cleanPath ? `images/${safeUser}/${cleanPath}` : `images/${safeUser}`;
 
