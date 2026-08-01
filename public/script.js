@@ -186,6 +186,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   btn.disabled = false; fileInput.value = ""; updateFileMsg(); loadFolders();
 });
 
+// --- Fixed processFile Function (Preserves Alpha Channel) ---
 function processFile(file, targetFormat) {
   return new Promise((resolve, reject) => {
     const originalExtension = file.name.split('.').pop().toLowerCase();
@@ -194,11 +195,19 @@ function processFile(file, targetFormat) {
       reader.onload = () => resolve({ base64: reader.result.split(',')[1], extension: originalExtension });
       reader.onerror = reject; reader.readAsDataURL(file); return;
     }
-    const img = new Image(); const reader = new FileReader();
+    const img = new Image(); 
+    const reader = new FileReader();
     reader.onload = (e) => {
       img.onload = () => {
-        const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
-        const ctx = canvas.getContext('2d'); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0);
+        const canvas = document.createElement('canvas'); 
+        canvas.width = img.width; 
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        
+        // Clear canvas to ensure alpha transparency is retained
+        ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        ctx.drawImage(img, 0, 0);
+        
         const mimeType = targetFormat === 'webp' ? 'image/webp' : 'image/png';
         resolve({ base64: canvas.toDataURL(mimeType, 0.9).split(',')[1], extension: targetFormat });
       };
