@@ -19,6 +19,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// --- Toast Notifications ---
+function showToast(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  let iconHtml = '';
+  if (type === 'success') {
+    iconHtml = `<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--success)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+  } else if (type === 'danger') {
+    iconHtml = `<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--danger)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+  } else if (type === 'loading') {
+    iconHtml = `<div class="spinner"></div>`;
+  } else {
+    iconHtml = `<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
+  }
+
+  toast.innerHTML = `${iconHtml} <span>${message}</span>`;
+  container.appendChild(toast);
+
+  if (duration > 0) {
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.3s forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+  
+  return toast; // Return element so we can manually remove it if duration is 0
+}
+
 // --- Password Eye Toggle ---
 function togglePassword() {
   const pwdInput = document.getElementById('loginPassword');
@@ -109,7 +139,8 @@ async function loadFolders() {
   if(!select) return;
   select.innerHTML = '<option value="">Loading...</option>';
   try {
-    const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders`);
+    // Cache busting timestamp added here
+    const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders&t=${Date.now()}`);
     const data = await res.json();
     
     select.innerHTML = '<option value="">/ (Root Directory)</option>';
@@ -186,7 +217,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   btn.disabled = false; fileInput.value = ""; updateFileMsg(); loadFolders();
 });
 
-// --- Fixed processFile Function (Preserves Alpha Channel) ---
+// --- Image processing ---
 function processFile(file, targetFormat) {
   return new Promise((resolve, reject) => {
     const originalExtension = file.name.split('.').pop().toLowerCase();
@@ -203,11 +234,8 @@ function processFile(file, targetFormat) {
         canvas.width = img.width; 
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
-        
-        // Clear canvas to ensure alpha transparency is retained
         ctx.clearRect(0, 0, canvas.width, canvas.height); 
         ctx.drawImage(img, 0, 0);
-        
         const mimeType = targetFormat === 'webp' ? 'image/webp' : 'image/png';
         resolve({ base64: canvas.toDataURL(mimeType, 0.9).split(',')[1], extension: targetFormat });
       };
@@ -236,7 +264,7 @@ async function loadDirectoryContents(targetPath = '') {
   grid.innerHTML = `
     <div class="loader-container">
       <div class="spinner"></div>
-      <div>Syncing Directory...</div>
+      <div>Syncing Network Storage...</div>
     </div>
   `;
   filesSection.innerHTML = '';
@@ -250,7 +278,9 @@ async function loadDirectoryContents(targetPath = '') {
   window.currentFolders = [];
   
   try {
-    const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(currentPath)}`);
+    // Cache busting timestamp completely fixes the CDN caching delay issue
+    const cacheBuster = `&t=${Date.now()}`;
+    const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(currentPath)}${cacheBuster}`);
     const data = await res.json();
     grid.innerHTML = ''; 
     
@@ -478,7 +508,7 @@ async function triggerContextAction(action) {
       modal.style.display = 'flex';
       
       try {
-        const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders`);
+        const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders&t=${Date.now()}`);
         const data = await res.json();
         const allFolders = data.folders || [];
         
@@ -578,6 +608,14 @@ async function executeAction(overrideAction = null) {
 
   if(btn) { btn.disabled = true; btn.innerText = "Processing..."; }
   
+  // Create a persistent loading toast
+  let loadingToast = null;
+  if (actionToRun === 'DELETE') {
+    loadingToast = showToast(`Deleting '${rightClickedItem.originalName}'... This may take a moment.`, 'loading', 0);
+  } else {
+    loadingToast = showToast(`Processing ${actionToRun.toLowerCase()}...`, 'loading', 0);
+  }
+  
   try {
     const res = await fetch('/api/manage', {
       method: 'POST',
@@ -592,13 +630,17 @@ async function executeAction(overrideAction = null) {
     });
     const data = await res.json();
     
+    if (loadingToast) loadingToast.remove();
+    
     if(res.ok) {
+      showToast(`Asset successfully ${actionToRun.toLowerCase()}d!`, 'success');
       closeModal('actionModal');
       loadDirectoryContents(currentPath);
     } else throw new Error(data.message || "Operation failed.");
   } catch(err) {
+    if (loadingToast) loadingToast.remove();
+    showToast(err.message, 'danger');
     if(errDiv) errDiv.innerText = err.message;
-    else alert(err.message);
   }
   
   if(btn) { btn.disabled = false; btn.innerText = "Confirm"; }
@@ -607,17 +649,24 @@ async function executeAction(overrideAction = null) {
 async function copyToClipboard(text, btnElement = null, noToast = false) {
   try {
     await navigator.clipboard.writeText(text);
+    if (!noToast) showToast('CDN URL copied to clipboard!', 'success');
+    
     if(btnElement) {
       const originalHTML = btnElement.innerHTML;
       btnElement.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="var(--primary)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
       setTimeout(() => btnElement.innerHTML = originalHTML, 2000);
     }
-  } catch (err) {}
+  } catch (err) {
+    showToast('Failed to copy to clipboard.', 'danger');
+  }
 }
 
 document.getElementById('historyCsvBtn').addEventListener('click', () => {
   const filesToExport = getFilteredFiles();
-  if (filesToExport.length === 0) return;
+  if (filesToExport.length === 0) {
+    showToast('No files to export.', 'danger');
+    return;
+  }
   let csvContent = "Original Name,File Size,CDN Link\n";
   filesToExport.forEach(file => { csvContent += `"${file.originalName}","${formatBytes(file.size)}","${file.url}"\n`; });
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -625,4 +674,5 @@ document.getElementById('historyCsvBtn').addEventListener('click', () => {
   link.setAttribute("href", URL.createObjectURL(blob));
   link.setAttribute("download", `Asset_Export_${Date.now()}.csv`);
   document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  showToast('Export successful!', 'success');
 });
