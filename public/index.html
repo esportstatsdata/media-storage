@@ -106,7 +106,7 @@
     .view-toggles { display: flex; gap: 0.25rem; background: var(--bg-surface); padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
 
     /* --- Explorer Layout --- */
-    .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
+    .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; padding: 1rem 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
     .crumb { color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 0.5rem; }
     .crumb:hover { color: var(--primary); }
     .crumb.active { color: var(--text-main); cursor: default; }
@@ -295,7 +295,11 @@
           </div>
         </div>
         
-        <div class="breadcrumbs" id="breadcrumbNav"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem;">
+          <div class="breadcrumbs" id="breadcrumbNav" style="margin-bottom: 0; flex: 1;"></div>
+          <div id="itemCountBadge" style="background: var(--bg-surface); border: 1px solid var(--border); padding: 0.85rem 1.25rem; border-radius: 8px; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; display: none; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"></div>
+        </div>
+
         <div id="historyFolderGrid" class="folder-grid"></div>
         <div id="historyFilesSection"></div>
         <div style="margin-top: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;" id="contextHint">Right-click any folder or file for advanced actions.</div>
