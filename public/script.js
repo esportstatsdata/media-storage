@@ -4,7 +4,7 @@ let currentPath = '';
 let currentHistoryFiles = [];
 window.currentFolders = []; 
 let viewMode = 'list';
-let rightClickedItem = null; // { path: string, type: 'file'|'folder', url?: string, originalName: string }
+let rightClickedItem = null; 
 let pendingAction = null; 
 
 // --- Session & Theme Persistence on Load ---
@@ -59,7 +59,6 @@ function showToast(message, type = 'info', duration = 3000) {
     iconHtml = `<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
   }
 
-  // Wrapped in a flex:1 div to allow the progress bar to stretch correctly
   toast.innerHTML = `${iconHtml} <div style="flex: 1; width: 100%;">${message}</div>`;
   container.appendChild(toast);
 
@@ -157,7 +156,68 @@ function switchTab(tabId) {
   }
 }
 
-// --- Upload Engine ---
+// --- Centralized Upload Engine ---
+async function performUpload(files, targetFolder, targetFormat) {
+  if (!files.length) return;
+  
+  let successCount = 0;
+  let loadingToast = showToast(`Deploying [1/${files.length}]: ${files[0].name}`, 'loading', 0);
+  const toastText = loadingToast.lastElementChild;
+
+  for (let i = 0; i < files.length; i++) {
+    if(toastText) toastText.innerHTML = `Deploying [${i + 1}/${files.length}]: ${files[i].name}`;
+    try {
+      const { base64, extension } = await processFile(files[i], targetFormat);
+      const baseName = files[i].name.substring(0, files[i].name.lastIndexOf('.')) || files[i].name;
+      const timestampedName = `${Date.now()}-${baseName.replace(/\s+/g, '-')}.${extension}`;
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileData: base64, fileName: timestampedName, user: currentUser, folder: targetFolder })
+      });
+      if (res.ok) successCount++;
+    } catch (e) {}
+  }
+  
+  loadingToast.remove();
+  if (successCount > 0) {
+      showToast(`Deployment Complete: ${successCount} asset(s) pushed.`, 'success');
+  } else {
+      showToast(`Deployment failed.`, 'danger');
+  }
+  
+  loadFolders(); 
+  if (document.getElementById('historyTab').classList.contains('active')) {
+     loadDirectoryContents(currentPath);
+  }
+}
+
+function processFile(file, targetFormat) {
+  return new Promise((resolve, reject) => {
+    const originalExtension = file.name.split('.').pop().toLowerCase();
+    if (!file.type.startsWith('image/') || targetFormat === 'original') {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ base64: reader.result.split(',')[1], extension: originalExtension });
+      reader.onerror = reject; reader.readAsDataURL(file); return;
+    }
+    const img = new Image(); const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        ctx.drawImage(img, 0, 0);
+        const mimeType = targetFormat === 'webp' ? 'image/webp' : 'image/png';
+        resolve({ base64: canvas.toDataURL(mimeType, 0.9).split(',')[1], extension: targetFormat });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// --- Upload Tab Specific UI Listeners ---
 async function loadFolders() {
   const select = document.getElementById('folderSelect');
   if(!select) return;
@@ -190,12 +250,6 @@ function getSelectedFolder() {
   return s.value === 'new_folder' ? document.getElementById('newFolderInput').value.trim() : s.value;
 }
 
-function formatBytes(bytes) {
-  if (!bytes || bytes === 0) return '0 Bytes';
-  const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
 function updateFileMsg() {
   const input = document.getElementById('fileInput');
   const msg = document.getElementById('fileMsg');
@@ -211,65 +265,65 @@ function updateFileMsg() {
 document.getElementById('uploadBtn').addEventListener('click', async () => {
   const fileInput = document.getElementById('fileInput');
   const formatSelect = document.getElementById('formatSelect').value;
-  const statusDiv = document.getElementById('status');
-  const btn = document.getElementById('uploadBtn');
   const targetFolder = getSelectedFolder(); 
   
-  if (!fileInput.files.length) { statusDiv.innerText = "No assets selected."; return; }
-
-  btn.disabled = true; statusDiv.style.color = "var(--primary)";
   const files = Array.from(fileInput.files);
-  let successCount = 0;
+  if (!files.length) { showToast("No assets selected.", "danger"); return; }
 
-  for (let i = 0; i < files.length; i++) {
-    statusDiv.innerText = `Deploying [${i + 1}/${files.length}]: ${files[i].name}`;
-    try {
-      const { base64, extension } = await processFile(files[i], formatSelect);
-      const baseName = files[i].name.substring(0, files[i].name.lastIndexOf('.')) || files[i].name;
-      const timestampedName = `${Date.now()}-${baseName.replace(/\s+/g, '-')}.${extension}`;
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileData: base64, fileName: timestampedName, user: currentUser, folder: targetFolder })
-      });
-      if (res.ok) successCount++;
-    } catch (e) {}
-  }
-  statusDiv.innerText = `Operation Complete: ${successCount} asset(s) pushed.`;
-  btn.disabled = false; fileInput.value = ""; updateFileMsg(); loadFolders();
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true; 
+  
+  await performUpload(files, targetFolder, formatSelect);
+  
+  btn.disabled = false; fileInput.value = ""; updateFileMsg(); 
 });
 
-function processFile(file, targetFormat) {
-  return new Promise((resolve, reject) => {
-    const originalExtension = file.name.split('.').pop().toLowerCase();
-    if (!file.type.startsWith('image/') || targetFormat === 'original') {
-      const reader = new FileReader();
-      reader.onload = () => resolve({ base64: reader.result.split(',')[1], extension: originalExtension });
-      reader.onerror = reject; reader.readAsDataURL(file); return;
-    }
-    const img = new Image(); const reader = new FileReader();
-    reader.onload = (e) => {
-      img.onload = () => {
-        const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height); 
-        ctx.drawImage(img, 0, 0);
-        const mimeType = targetFormat === 'webp' ? 'image/webp' : 'image/png';
-        resolve({ base64: canvas.toDataURL(mimeType, 0.9).split(',')[1], extension: targetFormat });
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+// --- Explorer Inline Upload & Drag/Drop Logic ---
+function handleExplorerUpload(input) {
+  const files = Array.from(input.files);
+  if(!files.length) return;
+  const format = document.getElementById('formatSelect') ? document.getElementById('formatSelect').value : 'original';
+  performUpload(files, currentPath, format).then(() => {
+     input.value = "";
   });
 }
 
-// --- Explorer Engine ---
+const historyTabElement = document.getElementById('historyTab');
+const dropZoneElement = document.getElementById('explorerDropZone');
+
+historyTabElement.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  if (currentUser) dropZoneElement.classList.add('active'); 
+});
+
+dropZoneElement.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  dropZoneElement.classList.remove('active');
+});
+
+dropZoneElement.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZoneElement.classList.remove('active');
+  const files = Array.from(e.dataTransfer.files);
+  if (!files.length) return;
+  const format = document.getElementById('formatSelect') ? document.getElementById('formatSelect').value : 'original';
+  performUpload(files, currentPath, format);
+});
+
+
+// --- Explorer Utilities ---
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 Bytes';
+  const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
 function isImageExtension(fileName) {
   const ext = fileName.split('.').pop().toLowerCase();
   return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
 }
 
+// --- Explorer Engine ---
 async function loadDirectoryContents(targetPath = '') {
   currentPath = targetPath;
   renderBreadcrumbs();
@@ -289,8 +343,6 @@ async function loadDirectoryContents(targetPath = '') {
   `;
   filesSection.innerHTML = '';
   
-  if(toolbar) toolbar.style.display = 'none';
-  if(searchContainer) searchContainer.style.display = 'none';
   if(hint) hint.style.display = 'none';
   if(badge) badge.style.display = 'none';
   document.getElementById('searchInput').value = '';
@@ -310,8 +362,6 @@ async function loadDirectoryContents(targetPath = '') {
     }
 
     if (data.files && data.files.length > 0) {
-      if(toolbar) toolbar.style.display = 'flex';
-      if(searchContainer) searchContainer.style.display = 'flex';
       if(hint) hint.style.display = 'block';
       
       data.files.forEach(file => {
@@ -329,7 +379,7 @@ async function loadDirectoryContents(targetPath = '') {
     renderFiles();
     
     if (window.currentFolders.length === 0 && currentHistoryFiles.length === 0) {
-      grid.innerHTML = '<span style="color: var(--text-muted)">Directory is empty.</span>';
+      grid.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;">Directory is empty. Click <b>Upload Here</b> or drag files to populate it.</div>';
     }
     
   } catch (error) {
@@ -399,7 +449,8 @@ function renderFiles() {
     }
   }
 
-  if (filesToRender.length === 0 && foldersToRender.length === 0) {
+  // Do not block rendering if searching yields 0, let user know.
+  if (filesToRender.length === 0 && foldersToRender.length === 0 && (currentHistoryFiles.length > 0 || window.currentFolders.length > 0)) {
     container.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;">No matching assets found.</div>';
     return;
   }
@@ -574,7 +625,22 @@ async function triggerContextAction(action) {
   }
 }
 
-// --- Download Logic (JSZip Integration with Progress UI) ---
+// --- Create Folder Logic ---
+function openCreateFolderModal() {
+  pendingAction = 'CREATE_FOLDER';
+  const modal = document.getElementById('actionModal');
+  document.getElementById('actionModalTitle').innerText = 'Create New Folder';
+  document.getElementById('actionLabel').innerText = 'Folder Name';
+  document.getElementById('actionFolderGroup').style.display = 'none';
+  document.getElementById('actionInputGroup').style.display = 'block';
+  document.getElementById('actionInput').value = '';
+  document.getElementById('actionError').innerText = '';
+  modal.style.display = 'flex';
+  document.getElementById('actionInput').focus();
+}
+
+
+// --- Download Logic (JSZip Integration) ---
 async function fetchAllFilesRecursively(basePath) {
   let allFiles = [];
   const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(basePath)}&t=${Date.now()}`);
@@ -624,7 +690,7 @@ async function downloadAsset(item) {
     }
     
     const toast = showToast(`Analyzing folder '${item.originalName}'...`, 'loading', 0);
-    const toastText = toast.querySelector('div'); // Get the dynamically injected flex container
+    const toastText = toast.querySelector('div[style*="flex: 1"]'); 
     
     try {
       const filesToZip = await fetchAllFilesRecursively(item.path);
@@ -640,7 +706,6 @@ async function downloadAsset(item) {
       let loadedFiles = 0;
       const startTime = Date.now();
 
-      // Phase 1: Download files
       for (let file of filesToZip) {
         const relativePath = file.path.substring(item.path.length + 1);
         const res = await fetch(file.url);
@@ -649,7 +714,6 @@ async function downloadAsset(item) {
 
         loadedFiles++;
         
-        // Calculate ETA
         const percent = ((loadedFiles / totalFiles) * 100).toFixed(0);
         const elapsedMs = Date.now() - startTime;
         const avgTimePerFile = elapsedMs / loadedFiles;
@@ -658,7 +722,6 @@ async function downloadAsset(item) {
         
         let etaString = etaSec > 60 ? `${Math.floor(etaSec/60)}m ${etaSec%60}s` : `${etaSec}s`;
 
-        // Inject fetching progress bar
         toastText.innerHTML = `
           <div style="display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 240px;">
             <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
@@ -676,7 +739,6 @@ async function downloadAsset(item) {
         `;
       }
 
-      // Phase 2: Compress and Generate Zip
       toastText.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 240px;">
           <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
@@ -756,6 +818,38 @@ async function executeAction(overrideAction = null) {
   const errDiv = document.getElementById('actionError');
   const btn = document.getElementById('executeActionBtn');
   
+  // -- Handle Folder Creation --
+  if (actionToRun === 'CREATE_FOLDER') {
+    const inputVal = document.getElementById('actionInput').value.trim();
+    if (!inputVal) { errDiv.innerText = "Folder name is required."; return; }
+    
+    const targetFolder = currentPath ? `${currentPath}/${inputVal}` : inputVal;
+    if(btn) { btn.disabled = true; btn.innerText = "Processing..."; }
+    
+    let loadingToast = showToast(`Creating folder '${inputVal}'...`, 'loading', 0);
+    try {
+      const base64Empty = btoa("keep"); 
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileData: base64Empty, fileName: '.gitkeep', user: currentUser, folder: targetFolder })
+      });
+      if(!res.ok) throw new Error("Failed to create folder. Permissions error.");
+      
+      loadingToast.remove();
+      showToast("Folder created successfully!", "success");
+      closeModal('actionModal');
+      loadDirectoryContents(currentPath);
+      loadFolders(); 
+    } catch(e) {
+      loadingToast.remove();
+      errDiv.innerText = e.message;
+    }
+    if(btn) { btn.disabled = false; btn.innerText = "Confirm"; }
+    return;
+  }
+
+  // -- Handle Standard Actions --
   let newPath = null;
   
   if (actionToRun !== 'DELETE') {
