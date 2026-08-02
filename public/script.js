@@ -7,8 +7,16 @@ let viewMode = 'list';
 let rightClickedItem = null; // { path: string, type: 'file'|'folder', url?: string, originalName: string }
 let pendingAction = null; 
 
-// --- Session Persistence on Load ---
+// --- Session & Theme Persistence on Load ---
 document.addEventListener('DOMContentLoaded', () => {
+  // Apply saved theme instantly
+  const savedTheme = localStorage.getItem('cdn_theme') || 'dark';
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-theme');
+    updateThemeIcon('light');
+  }
+
+  // Restore session
   const savedUser = sessionStorage.getItem('cdn_user');
   const savedPass = sessionStorage.getItem('cdn_pass');
   if (savedUser && savedPass) {
@@ -18,6 +26,25 @@ document.addEventListener('DOMContentLoaded', () => {
     handleLogin(submitEvent);
   }
 });
+
+// --- Theme Toggle Logic ---
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-theme');
+  localStorage.setItem('cdn_theme', isLight ? 'light' : 'dark');
+  updateThemeIcon(isLight ? 'light' : 'dark');
+}
+
+function updateThemeIcon(theme) {
+  const btn = document.getElementById('themeToggleBtn');
+  if (!btn) return;
+  if (theme === 'light') {
+    // Show Moon icon (switch to dark)
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
+  } else {
+    // Show Sun icon (switch to light)
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+  }
+}
 
 // --- Toast Notifications ---
 function showToast(message, type = 'info', duration = 3000) {
