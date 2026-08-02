@@ -9,14 +9,12 @@ let pendingAction = null;
 
 // --- Session & Theme Persistence on Load ---
 document.addEventListener('DOMContentLoaded', () => {
-  // Apply saved theme instantly
   const savedTheme = localStorage.getItem('cdn_theme') || 'dark';
   if (savedTheme === 'light') {
     document.body.classList.add('light-theme');
     updateThemeIcon('light');
   }
 
-  // Restore session
   const savedUser = sessionStorage.getItem('cdn_user');
   const savedPass = sessionStorage.getItem('cdn_pass');
   if (savedUser && savedPass) {
@@ -38,10 +36,8 @@ function updateThemeIcon(theme) {
   const btn = document.getElementById('themeToggleBtn');
   if (!btn) return;
   if (theme === 'light') {
-    // Show Moon icon (switch to dark)
     btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
   } else {
-    // Show Sun icon (switch to light)
     btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
   }
 }
@@ -380,7 +376,6 @@ function renderFiles() {
 
   container.innerHTML = '';
   
-  // -- Update Item Count Badge --
   const badge = document.getElementById('itemCountBadge');
   if (badge) {
     const totalRendered = filesToRender.length + foldersToRender.length;
@@ -527,6 +522,8 @@ async function triggerContextAction(action) {
     if(confirm(`WARNING: Are you sure you want to permanently delete '${rightClickedItem.originalName}'?`)) {
       executeAction('DELETE');
     }
+  } else if (action === 'download') {
+    downloadAsset(rightClickedItem);
   } else {
     pendingAction = action.toUpperCase();
     const modal = document.getElementById('actionModal');
@@ -573,6 +570,90 @@ async function triggerContextAction(action) {
     
     modal.style.display = 'flex';
     if (pendingAction === 'RENAME') input.focus();
+  }
+}
+
+// --- Download Logic (JSZip Integration) ---
+async function fetchAllFilesRecursively(basePath) {
+  let allFiles = [];
+  const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(basePath)}&t=${Date.now()}`);
+  const data = await res.json();
+
+  if (data.files) {
+    data.files.forEach(f => {
+      allFiles.push({
+        ...f,
+        path: basePath ? `${basePath}/${f.name}` : f.name
+      });
+    });
+  }
+
+  if (data.folders) {
+    for (let folder of data.folders) {
+      const subPath = basePath ? `${basePath}/${folder}` : folder;
+      const subFiles = await fetchAllFilesRecursively(subPath);
+      allFiles.push(...subFiles);
+    }
+  }
+  return allFiles;
+}
+
+async function downloadAsset(item) {
+  if (item.type === 'file') {
+    const toast = showToast(`Downloading ${item.originalName}...`, 'loading', 0);
+    try {
+      const res = await fetch(item.url);
+      const blob = await res.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = item.originalName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.remove();
+      showToast('Download complete!', 'success');
+    } catch (e) {
+      toast.remove();
+      showToast('Download failed.', 'danger');
+    }
+  } else if (item.type === 'folder') {
+    if (typeof JSZip === 'undefined') {
+      showToast('Compression library not loaded. Please refresh.', 'danger');
+      return;
+    }
+    
+    const toast = showToast(`Zipping folder '${item.originalName}'... This may take a moment.`, 'loading', 0);
+    try {
+      const zip = new JSZip();
+      const filesToZip = await fetchAllFilesRecursively(item.path);
+
+      if (filesToZip.length === 0) {
+        toast.remove();
+        showToast('Folder is empty.', 'info');
+        return;
+      }
+
+      for (let file of filesToZip) {
+        const relativePath = file.path.substring(item.path.length + 1); // remove root path
+        const res = await fetch(file.url);
+        const blob = await res.blob();
+        zip.file(relativePath, blob);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = `${item.originalName}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.remove();
+      showToast(`'${item.originalName}.zip' downloaded!`, 'success');
+    } catch (e) {
+      toast.remove();
+      showToast('Failed to zip and download folder.', 'danger');
+    }
   }
 }
 
