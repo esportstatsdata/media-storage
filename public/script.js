@@ -573,7 +573,7 @@ async function triggerContextAction(action) {
   }
 }
 
-// --- Download Logic (JSZip Integration) ---
+// --- Download Logic (JSZip Integration with ETA) ---
 async function fetchAllFilesRecursively(basePath) {
   let allFiles = [];
   const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(basePath)}&t=${Date.now()}`);
@@ -622,9 +622,10 @@ async function downloadAsset(item) {
       return;
     }
     
-    const toast = showToast(`Zipping folder '${item.originalName}'... This may take a moment.`, 'loading', 0);
+    const toast = showToast(`Analyzing folder '${item.originalName}'...`, 'loading', 0);
+    const toastText = toast.querySelector('span'); // Get the text container to update dynamically
+
     try {
-      const zip = new JSZip();
       const filesToZip = await fetchAllFilesRecursively(item.path);
 
       if (filesToZip.length === 0) {
@@ -633,14 +634,44 @@ async function downloadAsset(item) {
         return;
       }
 
+      const zip = new JSZip();
+      const totalFiles = filesToZip.length;
+      let loadedFiles = 0;
+      const startTime = Date.now();
+
+      // Phase 1: Download files
       for (let file of filesToZip) {
-        const relativePath = file.path.substring(item.path.length + 1); // remove root path
+        const relativePath = file.path.substring(item.path.length + 1);
         const res = await fetch(file.url);
         const blob = await res.blob();
         zip.file(relativePath, blob);
+
+        loadedFiles++;
+        
+        // Calculate ETA
+        const elapsedMs = Date.now() - startTime;
+        const avgTimePerFile = elapsedMs / loadedFiles;
+        const remainingFiles = totalFiles - loadedFiles;
+        const etaMs = remainingFiles * avgTimePerFile;
+        
+        const etaSec = Math.ceil(etaMs / 1000);
+        let etaString = '';
+        if (etaSec > 60) {
+            etaString = `${Math.floor(etaSec/60)}m ${etaSec%60}s`;
+        } else {
+            etaString = `${etaSec}s`;
+        }
+
+        toastText.innerHTML = `Downloading assets... ${loadedFiles}/${totalFiles} <br><small style="opacity:0.8">Estimated time left: ${etaString}</small>`;
       }
 
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      toastText.innerHTML = `Compressing folder... 0%`;
+
+      // Phase 2: Compress and Generate Zip
+      const zipBlob = await zip.generateAsync({ type: 'blob' }, function updateCallback(metadata) {
+          toastText.innerHTML = `Compressing folder... ${metadata.percent.toFixed(0)}%`;
+      });
+
       const link = document.createElement('a');
       link.href = URL.createObjectURL(zipBlob);
       link.download = `${item.originalName}.zip`;
