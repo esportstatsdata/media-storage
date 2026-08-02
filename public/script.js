@@ -59,7 +59,8 @@ function showToast(message, type = 'info', duration = 3000) {
     iconHtml = `<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
   }
 
-  toast.innerHTML = `${iconHtml} <span>${message}</span>`;
+  // Wrapped in a flex:1 div to allow the progress bar to stretch correctly
+  toast.innerHTML = `${iconHtml} <div style="flex: 1; width: 100%;">${message}</div>`;
   container.appendChild(toast);
 
   if (duration > 0) {
@@ -573,7 +574,7 @@ async function triggerContextAction(action) {
   }
 }
 
-// --- Download Logic (JSZip Integration with ETA) ---
+// --- Download Logic (JSZip Integration with Progress UI) ---
 async function fetchAllFilesRecursively(basePath) {
   let allFiles = [];
   const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(basePath)}&t=${Date.now()}`);
@@ -623,8 +624,8 @@ async function downloadAsset(item) {
     }
     
     const toast = showToast(`Analyzing folder '${item.originalName}'...`, 'loading', 0);
-    const toastText = toast.querySelector('span'); // Get the text container to update dynamically
-
+    const toastText = toast.querySelector('div'); // Get the dynamically injected flex container
+    
     try {
       const filesToZip = await fetchAllFilesRecursively(item.path);
 
@@ -649,27 +650,52 @@ async function downloadAsset(item) {
         loadedFiles++;
         
         // Calculate ETA
+        const percent = ((loadedFiles / totalFiles) * 100).toFixed(0);
         const elapsedMs = Date.now() - startTime;
         const avgTimePerFile = elapsedMs / loadedFiles;
         const remainingFiles = totalFiles - loadedFiles;
-        const etaMs = remainingFiles * avgTimePerFile;
+        const etaSec = Math.ceil((remainingFiles * avgTimePerFile) / 1000);
         
-        const etaSec = Math.ceil(etaMs / 1000);
-        let etaString = '';
-        if (etaSec > 60) {
-            etaString = `${Math.floor(etaSec/60)}m ${etaSec%60}s`;
-        } else {
-            etaString = `${etaSec}s`;
-        }
+        let etaString = etaSec > 60 ? `${Math.floor(etaSec/60)}m ${etaSec%60}s` : `${etaSec}s`;
 
-        toastText.innerHTML = `Downloading assets... ${loadedFiles}/${totalFiles} <br><small style="opacity:0.8">Estimated time left: ${etaString}</small>`;
+        // Inject fetching progress bar
+        toastText.innerHTML = `
+          <div style="display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 240px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+              <span>Fetching Assets...</span>
+              <span style="color: var(--primary); font-weight: 600;">${percent}%</span>
+            </div>
+            <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border);">
+              <div style="width: ${percent}%; height: 100%; background: var(--primary); transition: width 0.2s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+              <span>${loadedFiles} / ${totalFiles} files</span>
+              <span>ETA: ${etaString}</span>
+            </div>
+          </div>
+        `;
       }
 
-      toastText.innerHTML = `Compressing folder... 0%`;
-
       // Phase 2: Compress and Generate Zip
+      toastText.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 240px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+            <span>Compressing Archive...</span>
+            <span style="color: var(--primary); font-weight: 600;" id="zipPercent">0%</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border);">
+            <div id="zipProgressBar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear;"></div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Packaging ${totalFiles} files into .zip</div>
+        </div>
+      `;
+
       const zipBlob = await zip.generateAsync({ type: 'blob' }, function updateCallback(metadata) {
-          toastText.innerHTML = `Compressing folder... ${metadata.percent.toFixed(0)}%`;
+         const progress = metadata.percent.toFixed(0);
+         const pBar = document.getElementById('zipProgressBar');
+         const pText = document.getElementById('zipPercent');
+         if(pBar) pBar.style.width = `${progress}%`;
+         if(pText) pText.innerText = `${progress}%`;
       });
 
       const link = document.createElement('a');
@@ -680,7 +706,7 @@ async function downloadAsset(item) {
       document.body.removeChild(link);
 
       toast.remove();
-      showToast(`'${item.originalName}.zip' downloaded!`, 'success');
+      showToast(`'${item.originalName}.zip' downloaded successfully!`, 'success');
     } catch (e) {
       toast.remove();
       showToast('Failed to zip and download folder.', 'danger');
