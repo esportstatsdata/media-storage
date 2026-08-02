@@ -157,13 +157,12 @@ function switchTab(tabId) {
 }
 
 // --- Centralized Upload Engine ---
-// --- Centralized Upload Engine ---
 async function performUpload(files, targetFolder, targetFormat) {
   if (!files.length) return;
   
   let successCount = 0;
   let loadingToast = showToast(`Deploying [1/${files.length}]: ${files[0].name}`, 'loading', 0);
-  const toastText = loadingToast.lastElementChild;
+  const toastText = loadingToast.querySelector('div[style*="flex: 1"]');
 
   for (let i = 0; i < files.length; i++) {
     if(toastText) toastText.innerHTML = `Deploying [${i + 1}/${files.length}]: ${files[i].name}`;
@@ -183,7 +182,6 @@ async function performUpload(files, targetFolder, targetFormat) {
   
   loadingToast.remove();
   if (successCount > 0) {
-      // Updated toast message to indicate syncing
       showToast(`Deployment Complete: ${successCount} asset(s) pushed. Syncing display...`, 'success');
   } else {
       showToast(`Deployment failed.`, 'danger');
@@ -191,13 +189,13 @@ async function performUpload(files, targetFolder, targetFormat) {
   
   loadFolders(); 
   
-  // FIX: Added a 1.5 second delay to allow GitHub's API tree to index the newly created files
   if (document.getElementById('historyTab').classList.contains('active')) {
      setTimeout(() => {
          loadDirectoryContents(currentPath);
      }, 1500);
   }
 }
+
 function processFile(file, targetFormat) {
   return new Promise((resolve, reject) => {
     const originalExtension = file.name.split('.').pop().toLowerCase();
@@ -293,12 +291,14 @@ function handleExplorerUpload(input) {
   });
 }
 
-const historyTabElement = document.getElementById('historyTab');
+const mainContentElement = document.querySelector('.main-content');
 const dropZoneElement = document.getElementById('explorerDropZone');
 
-historyTabElement.addEventListener('dragover', (e) => {
+mainContentElement.addEventListener('dragover', (e) => {
   e.preventDefault();
-  if (currentUser) dropZoneElement.classList.add('active'); 
+  if (currentUser && document.getElementById('historyTab').classList.contains('active')) {
+      dropZoneElement.classList.add('active'); 
+  }
 });
 
 dropZoneElement.addEventListener('dragleave', (e) => {
@@ -644,8 +644,7 @@ function openCreateFolderModal() {
   document.getElementById('actionInput').focus();
 }
 
-
-// --- Download Logic (JSZip Integration) ---
+// --- Download Logic (JSZip Integration with ETA) ---
 async function fetchAllFilesRecursively(basePath) {
   let allFiles = [];
   const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(basePath)}&t=${Date.now()}`);
@@ -842,10 +841,14 @@ async function executeAction(overrideAction = null) {
       if(!res.ok) throw new Error("Failed to create folder. Permissions error.");
       
       loadingToast.remove();
-      showToast("Folder created successfully!", "success");
+      showToast("Folder created successfully! Syncing display...", "success");
       closeModal('actionModal');
-      loadDirectoryContents(currentPath);
-      loadFolders(); 
+      
+      setTimeout(() => {
+        loadDirectoryContents(currentPath);
+        loadFolders(); 
+      }, 1500);
+      
     } catch(e) {
       loadingToast.remove();
       errDiv.innerText = e.message;
@@ -916,9 +919,14 @@ async function executeAction(overrideAction = null) {
     if (loadingToast) loadingToast.remove();
     
     if(res.ok) {
-      showToast(`Asset successfully ${actionToRun.toLowerCase()}d!`, 'success');
+      showToast(`Asset successfully ${actionToRun.toLowerCase()}d! Syncing display...`, 'success');
       closeModal('actionModal');
-      loadDirectoryContents(currentPath);
+      
+      setTimeout(() => {
+        loadDirectoryContents(currentPath);
+        loadFolders(); 
+      }, 1500);
+
     } else throw new Error(data.message || "Operation failed.");
   } catch(err) {
     if (loadingToast) loadingToast.remove();
