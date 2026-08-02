@@ -252,12 +252,9 @@
           <span id="userNameDisplay"></span>
         </div>
         <div style="display: flex; gap: 0.25rem;">
-          <!-- Theme Switcher -->
           <button class="logout-btn theme-btn" onclick="toggleTheme()" title="Switch Theme" id="themeToggleBtn">
-            <!-- Default Moon Icon (Swapped dynamically in JS) -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
           </button>
-          <!-- Logout Button -->
           <button class="logout-btn" onclick="logout()" title="Logout">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
           </button>
@@ -349,6 +346,13 @@
       <svg width="16" height="16" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
       Copy CDN URL
     </div>
+    
+    <!-- New Download Action -->
+    <div class="context-menu-item" id="menu-download" onclick="triggerContextAction('download')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Download
+    </div>
+
     <div class="context-divider" id="menu-divider-1"></div>
     
     <div class="context-menu-item" onclick="triggerContextAction('rename')">
@@ -406,6 +410,8 @@
     </div>
   </div>
 
+  <!-- Include JSZip for client-side folder zipping -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
