@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <style>
+    /* Default Dark Theme Variables */
     :root {
       --bg-base: #0a0a0b;
       --bg-surface: #141517;
@@ -16,26 +17,47 @@
       --border: #333538;
       --text-main: #e8e8e8;
       --text-muted: #9a9a9a;
+      --text-title: #ffffff;
       --primary: #ff7b00;
       --primary-hover: #e66e00;
       --primary-alpha: rgba(255, 123, 0, 0.12);
       --danger: #ef4444;
       --success: #10b981;
+      --shadow-heavy: 0 30px 60px rgba(0,0,0,0.8);
+      --shadow-modal: 0 25px 50px rgba(0,0,0,0.5);
+      --shadow-toast: 0 10px 30px rgba(0,0,0,0.5);
+      --context-menu-bg: rgba(20, 21, 23, 0.95);
     }
 
-    body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-base); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
+    /* Light Theme Override Variables */
+    body.light-theme {
+      --bg-base: #f4f4f5;
+      --bg-surface: #ffffff;
+      --bg-surface-hover: #f8fafc;
+      --border: #e4e4e7;
+      --text-main: #18181b;
+      --text-muted: #71717a;
+      --text-title: #000000;
+      --primary-alpha: rgba(255, 123, 0, 0.08);
+      --shadow-heavy: 0 20px 40px rgba(0,0,0,0.08);
+      --shadow-modal: 0 15px 35px rgba(0,0,0,0.1);
+      --shadow-toast: 0 10px 20px rgba(0,0,0,0.1);
+      --context-menu-bg: rgba(255, 255, 255, 0.95);
+    }
+
+    body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-base); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; transition: background-color 0.3s ease, color 0.3s ease; }
 
     /* --- Brand & Login --- */
-    .brand-title { font-family: 'Cinzel', serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; }
+    .brand-title { font-family: 'Cinzel', serif; font-size: 1.5rem; letter-spacing: 1px; color: var(--text-title); }
     
     #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: var(--bg-base); background-image: radial-gradient(circle at top, rgba(255, 123, 0, 0.05) 0%, transparent 40%); position: absolute; z-index: 9999; }
-    .login-card { background: var(--bg-surface); padding: 3.5rem 3rem; border-radius: 12px; border: 1px solid var(--border); border-top: 3px solid var(--primary); width: 100%; max-width: 400px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); text-align: center; }
-    .login-card h2 { margin: 1rem 0 0.5rem 0; font-family: 'Cinzel', serif; font-size: 2rem; color: #fff; }
+    .login-card { background: var(--bg-surface); padding: 3.5rem 3rem; border-radius: 12px; border: 1px solid var(--border); border-top: 3px solid var(--primary); width: 100%; max-width: 400px; box-shadow: var(--shadow-heavy); text-align: center; }
+    .login-card h2 { margin: 1rem 0 0.5rem 0; font-family: 'Cinzel', serif; font-size: 2rem; color: var(--text-title); }
     .login-card p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
 
     /* --- Layout --- */
     #appScreen { display: none; width: 100%; height: 100%; }
-    .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; z-index: 10;}
+    .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; z-index: 10; transition: background-color 0.3s ease, border-color 0.3s ease; }
     .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.5rem; padding-left: 0.5rem; }
     
     .nav-btn { background: transparent; border: none; color: var(--text-main); padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 1rem; transition: 0.2s; width: 100%; text-align: left; margin-bottom: 0.5rem; }
@@ -48,8 +70,10 @@
 
     .user-profile { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     .user-info { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; font-size: 0.9rem; }
-    .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: 0.2s; }
+    .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
     .logout-btn:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+    
+    .theme-btn:hover { color: var(--primary); background: var(--primary-alpha); }
 
     .main-content { flex: 1; overflow-y: auto; padding: 3rem 4rem; position: relative; }
 
@@ -86,7 +110,7 @@
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 10001; display: flex; flex-direction: column; gap: 0.75rem; pointer-events: none; }
-    .toast { background: var(--bg-surface); border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: var(--text-main); font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 0.75rem; animation: slideInRight 0.3s forwards; pointer-events: auto; min-width: 280px; max-width: 400px; }
+    .toast { background: var(--bg-surface); border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 1rem 1.5rem; border-radius: 8px; box-shadow: var(--shadow-toast); color: var(--text-main); font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 0.75rem; animation: slideInRight 0.3s forwards; pointer-events: auto; min-width: 280px; max-width: 400px; }
     .toast.success { border-left-color: var(--success); }
     .toast.danger { border-left-color: var(--danger); }
     .toast .spinner { width: 16px; height: 16px; border-width: 2px; }
@@ -94,7 +118,7 @@
     @keyframes fadeOut { to { opacity: 0; } }
 
     /* --- Toolbar & Search --- */
-    .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; color: #fff; margin: 0; }
+    .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; color: var(--text-title); margin: 0; }
     .header-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
     .search-container { display: flex; align-items: center; position: relative; flex: 1; max-width: 350px; margin-left: 2rem; }
     .search-container:focus-within .search-icon { fill: var(--primary); }
@@ -119,7 +143,7 @@
 
     .table-container { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; }
-    th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: rgba(0,0,0,0.2); }
+    th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: var(--bg-base); }
     td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr { transition: 0.2s; cursor: context-menu; }
@@ -132,7 +156,7 @@
 
     .grid-view-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
     .grid-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; cursor: context-menu; }
-    .grid-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+    .grid-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
     .grid-preview { height: 140px; background: var(--bg-base); display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
     .grid-preview img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
     .grid-preview svg { width: 48px; height: 48px; fill: var(--text-muted); opacity: 0.5; }
@@ -141,7 +165,7 @@
     .grid-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
 
     /* --- Right-Click Context Menu --- */
-    .context-menu { display: none; position: fixed; z-index: 10000; width: 220px; background: rgba(20, 21, 23, 0.95); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 0.5rem; flex-direction: column; }
+    .context-menu { display: none; position: fixed; z-index: 10000; width: 220px; background: var(--context-menu-bg); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-toast); padding: 0.5rem; flex-direction: column; }
     .context-menu-item { padding: 0.65rem 1rem; color: var(--text-main); cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; font-weight: 500; transition: 0.2s; }
     .context-menu-item svg { fill: currentColor; }
     .context-menu-item:hover { background: var(--bg-surface-hover); color: var(--primary); }
@@ -150,12 +174,12 @@
 
     /* --- Modals --- */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; justify-content: center; align-items: center; opacity: 0; animation: fadeIn 0.2s forwards; }
-    .modal-content { background: var(--bg-surface); padding: 2rem; border-radius: 12px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+    .modal-content { background: var(--bg-surface); padding: 2rem; border-radius: 12px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; box-shadow: var(--shadow-modal); }
     .modal-close { position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
     .modal-close:hover { color: var(--danger); }
     
     .action-box { width: 400px; text-align: left; }
-    .action-box h3 { margin-top: 0; margin-bottom: 1.5rem; color: #fff; font-family: 'Cinzel', serif; font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
+    .action-box h3 { margin-top: 0; margin-bottom: 1.5rem; color: var(--text-title); font-family: 'Cinzel', serif; font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
     
     .preview-media { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px; }
     .status-text { margin-top: 1rem; font-weight: 500; color: var(--primary); }
@@ -227,9 +251,17 @@
           <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;" id="userAvatar"></div>
           <span id="userNameDisplay"></span>
         </div>
-        <button class="logout-btn" onclick="logout()" title="Logout">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
-        </button>
+        <div style="display: flex; gap: 0.25rem;">
+          <!-- Theme Switcher -->
+          <button class="logout-btn theme-btn" onclick="toggleTheme()" title="Switch Theme" id="themeToggleBtn">
+            <!-- Default Moon Icon (Swapped dynamically in JS) -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          </button>
+          <!-- Logout Button -->
+          <button class="logout-btn" onclick="logout()" title="Logout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -297,7 +329,7 @@
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem;">
           <div class="breadcrumbs" id="breadcrumbNav" style="margin-bottom: 0; flex: 1;"></div>
-          <div id="itemCountBadge" style="background: var(--bg-surface); border: 1px solid var(--border); padding: 0.85rem 1.25rem; border-radius: 8px; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; display: none; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"></div>
+          <div id="itemCountBadge" style="background: var(--bg-surface); border: 1px solid var(--border); padding: 0.85rem 1.25rem; border-radius: 8px; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; display: none; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
         </div>
 
         <div id="historyFolderGrid" class="folder-grid"></div>
