@@ -157,6 +157,7 @@ function switchTab(tabId) {
 }
 
 // --- Centralized Upload Engine ---
+// --- Centralized Upload Engine ---
 async function performUpload(files, targetFolder, targetFormat) {
   if (!files.length) return;
   
@@ -182,17 +183,21 @@ async function performUpload(files, targetFolder, targetFormat) {
   
   loadingToast.remove();
   if (successCount > 0) {
-      showToast(`Deployment Complete: ${successCount} asset(s) pushed.`, 'success');
+      // Updated toast message to indicate syncing
+      showToast(`Deployment Complete: ${successCount} asset(s) pushed. Syncing display...`, 'success');
   } else {
       showToast(`Deployment failed.`, 'danger');
   }
   
   loadFolders(); 
+  
+  // FIX: Added a 1.5 second delay to allow GitHub's API tree to index the newly created files
   if (document.getElementById('historyTab').classList.contains('active')) {
-     loadDirectoryContents(currentPath);
+     setTimeout(() => {
+         loadDirectoryContents(currentPath);
+     }, 1500);
   }
 }
-
 function processFile(file, targetFormat) {
   return new Promise((resolve, reject) => {
     const originalExtension = file.name.split('.').pop().toLowerCase();
