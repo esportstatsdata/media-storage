@@ -46,7 +46,7 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
   }
   
-  return toast; // Return element so we can manually remove it if duration is 0
+  return toast; 
 }
 
 // --- Password Eye Toggle ---
@@ -139,7 +139,6 @@ async function loadFolders() {
   if(!select) return;
   select.innerHTML = '<option value="">Loading...</option>';
   try {
-    // Cache busting timestamp added here
     const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders&t=${Date.now()}`);
     const data = await res.json();
     
@@ -217,7 +216,6 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   btn.disabled = false; fileInput.value = ""; updateFileMsg(); loadFolders();
 });
 
-// --- Image processing ---
 function processFile(file, targetFormat) {
   return new Promise((resolve, reject) => {
     const originalExtension = file.name.split('.').pop().toLowerCase();
@@ -226,13 +224,10 @@ function processFile(file, targetFormat) {
       reader.onload = () => resolve({ base64: reader.result.split(',')[1], extension: originalExtension });
       reader.onerror = reject; reader.readAsDataURL(file); return;
     }
-    const img = new Image(); 
-    const reader = new FileReader();
+    const img = new Image(); const reader = new FileReader();
     reader.onload = (e) => {
       img.onload = () => {
-        const canvas = document.createElement('canvas'); 
-        canvas.width = img.width; 
-        canvas.height = img.height;
+        const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height); 
         ctx.drawImage(img, 0, 0);
@@ -260,6 +255,7 @@ async function loadDirectoryContents(targetPath = '') {
   const toolbar = document.getElementById('toolbarActions');
   const searchContainer = document.getElementById('searchContainer');
   const hint = document.getElementById('contextHint');
+  const badge = document.getElementById('itemCountBadge');
   
   grid.innerHTML = `
     <div class="loader-container">
@@ -272,13 +268,13 @@ async function loadDirectoryContents(targetPath = '') {
   if(toolbar) toolbar.style.display = 'none';
   if(searchContainer) searchContainer.style.display = 'none';
   if(hint) hint.style.display = 'none';
+  if(badge) badge.style.display = 'none';
   document.getElementById('searchInput').value = '';
   
   currentHistoryFiles = [];
   window.currentFolders = [];
   
   try {
-    // Cache busting timestamp completely fixes the CDN caching delay issue
     const cacheBuster = `&t=${Date.now()}`;
     const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(currentPath)}${cacheBuster}`);
     const data = await res.json();
@@ -356,6 +352,30 @@ function renderFiles() {
   });
 
   container.innerHTML = '';
+  
+  // -- Update Item Count Badge --
+  const badge = document.getElementById('itemCountBadge');
+  if (badge) {
+    const totalRendered = filesToRender.length + foldersToRender.length;
+    const totalItems = currentHistoryFiles.length + window.currentFolders.length;
+    
+    if (totalItems === 0) {
+      badge.style.display = 'none';
+    } else {
+      badge.style.display = 'block';
+      if (totalRendered < totalItems) {
+        badge.innerHTML = `<span style="color:var(--primary)">${totalRendered}</span> matching out of ${totalItems}`;
+      } else {
+        let fCount = window.currentFolders.length;
+        let fiCount = currentHistoryFiles.length;
+        let textArr = [];
+        if(fCount > 0) textArr.push(`${fCount} Folder${fCount !== 1 ? 's' : ''}`);
+        if(fiCount > 0) textArr.push(`${fiCount} Asset${fiCount !== 1 ? 's' : ''}`);
+        badge.innerHTML = textArr.join(' &nbsp;•&nbsp; ');
+      }
+    }
+  }
+
   if (filesToRender.length === 0 && foldersToRender.length === 0) {
     container.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;">No matching assets found.</div>';
     return;
@@ -608,7 +628,6 @@ async function executeAction(overrideAction = null) {
 
   if(btn) { btn.disabled = true; btn.innerText = "Processing..."; }
   
-  // Create a persistent loading toast
   let loadingToast = null;
   if (actionToRun === 'DELETE') {
     loadingToast = showToast(`Deleting '${rightClickedItem.originalName}'... This may take a moment.`, 'loading', 0);
