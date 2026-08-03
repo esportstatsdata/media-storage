@@ -4,6 +4,7 @@ let currentPath = '';
 let currentHistoryFiles = [];
 window.currentFolders = []; 
 let viewMode = 'list';
+let sortMode = 'newest'; // NEW: Default to recent first
 let rightClickedItem = null; 
 let pendingAction = null; 
 
@@ -315,7 +316,6 @@ dropZoneElement.addEventListener('drop', (e) => {
   performUpload(files, currentPath, format);
 });
 
-
 // --- Explorer Utilities ---
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 Bytes';
@@ -328,6 +328,35 @@ function isImageExtension(fileName) {
   return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
 }
 
+// --- NEW: Sorting Logic ---
+function changeSortMode(mode) {
+  sortMode = mode;
+  renderFiles();
+}
+
+function getSortedItems(filesToRender, foldersToRender) {
+  let sortedFiles = [...filesToRender];
+  let sortedFolders = [...foldersToRender];
+
+  if (sortMode === 'az') {
+    sortedFiles.sort((a, b) => a.originalName.localeCompare(b.originalName));
+    sortedFolders.sort((a, b) => a.localeCompare(b));
+  } else if (sortMode === 'za') {
+    sortedFiles.sort((a, b) => b.originalName.localeCompare(a.originalName));
+    sortedFolders.sort((a, b) => b.localeCompare(a));
+  } else if (sortMode === 'newest') {
+    // Highest timestamp first
+    sortedFiles.sort((a, b) => b.timestamp - a.timestamp);
+    sortedFolders.sort((a, b) => a.localeCompare(b)); // Keep folders A-Z
+  } else if (sortMode === 'oldest') {
+    // Lowest timestamp first
+    sortedFiles.sort((a, b) => a.timestamp - b.timestamp);
+    sortedFolders.sort((a, b) => a.localeCompare(b)); // Keep folders A-Z
+  }
+  
+  return { sortedFiles, sortedFolders };
+}
+
 // --- Explorer Engine ---
 async function loadDirectoryContents(targetPath = '') {
   currentPath = targetPath;
@@ -335,8 +364,6 @@ async function loadDirectoryContents(targetPath = '') {
   
   const grid = document.getElementById('historyFolderGrid');
   const filesSection = document.getElementById('historyFilesSection');
-  const toolbar = document.getElementById('toolbarActions');
-  const searchContainer = document.getElementById('searchContainer');
   const hint = document.getElementById('contextHint');
   const badge = document.getElementById('itemCountBadge');
   
@@ -370,10 +397,29 @@ async function loadDirectoryContents(targetPath = '') {
       if(hint) hint.style.display = 'block';
       
       data.files.forEach(file => {
-        const originalNameMatch = file.name.match(/^\d+-(.+)$/);
+        // Extract 13-digit Unix Timestamp from our specific filename format
+        const timestampMatch = file.name.match(/^(\d{13})-(.+)$/);
+        
+        let timestamp = 0;
+        let dateFormatted = 'N/A';
+        let originalName = file.name;
+        
+        if (timestampMatch) {
+            timestamp = parseInt(timestampMatch[1], 10);
+            originalName = timestampMatch[2];
+            const d = new Date(timestamp);
+            dateFormatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        } else {
+            // Fallback for files manually uploaded without our specific script
+            const originalNameMatch = file.name.match(/^\d+-(.+)$/);
+            originalName = originalNameMatch ? originalNameMatch[1] : file.name;
+        }
+
         currentHistoryFiles.push({
           rawName: file.name,
-          originalName: originalNameMatch ? originalNameMatch[1] : file.name,
+          originalName: originalName,
+          timestamp: timestamp,
+          dateFormatted: dateFormatted,
           size: file.size,
           url: file.url,
           path: currentPath ? `${currentPath}/${file.name}` : file.name
@@ -415,9 +461,14 @@ function renderFiles() {
   const grid = document.getElementById('historyFolderGrid');
   const container = document.getElementById('historyFilesSection');
   
-  const filesToRender = getFilteredFiles();
-  const foldersToRender = getFilteredFolders();
+  let filesToRender = getFilteredFiles();
+  let foldersToRender = getFilteredFolders();
   
+  // Apply Sort
+  const sorted = getSortedItems(filesToRender, foldersToRender);
+  filesToRender = sorted.sortedFiles;
+  foldersToRender = sorted.sortedFolders;
+
   grid.innerHTML = '';
   const folderIcon = `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
   foldersToRender.forEach(folder => {
@@ -470,11 +521,12 @@ function renderFiles() {
   let html = '';
   
   if (viewMode === 'list') {
-    html = `<div class="table-container"><table><thead><tr><th style="width: 45%;">Asset Name</th><th style="width: 15%;">Size</th><th>CDN Endpoint & Actions</th></tr></thead><tbody>`;
+    html = `<div class="table-container"><table><thead><tr><th style="width: 40%;">Asset Name</th><th style="width: 15%;">Date Added</th><th style="width: 10%;">Size</th><th>CDN Endpoint & Actions</th></tr></thead><tbody>`;
     filesToRender.forEach(file => {
       html += `
         <tr oncontextmenu="showContextMenu(event, '${file.path}', 'file', '${file.originalName}', '${file.url}')">
           <td><div class="file-name-wrapper">${fileIcon} <span style="font-weight: 500;">${file.originalName}</span></div></td>
+          <td style="color: var(--text-muted);">${file.dateFormatted}</td>
           <td style="color: var(--text-muted);">${formatBytes(file.size)}</td>
           <td>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -498,9 +550,9 @@ function renderFiles() {
           <div class="grid-preview" onclick="openPreview('${file.url}', '${file.rawName}')">${previewBlock}</div>
           <div class="grid-info">
             <div class="grid-title" title="${file.originalName}">${file.originalName}</div>
-            <div class="grid-meta">
-              <span>${formatBytes(file.size)}</span>
-              <div style="display:flex; gap:0.25rem;">
+            <div class="grid-meta" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
+              <span>${formatBytes(file.size)} • ${file.dateFormatted}</span>
+              <div style="display:flex; gap:0.25rem; align-self: flex-end; margin-top:-1.25rem;">
                 <button class="icon-btn" onclick="event.stopPropagation(); openPreview('${file.url}', '${file.rawName}')" title="Preview">${previewIcon}</button>
                 <button class="icon-btn" onclick="event.stopPropagation(); copyToClipboard('${file.url}', this)" title="Copy URL">${copyIcon}</button>
               </div>
@@ -958,8 +1010,8 @@ document.getElementById('historyCsvBtn').addEventListener('click', () => {
     showToast('No files to export.', 'danger');
     return;
   }
-  let csvContent = "Original Name,File Size,CDN Link\n";
-  filesToExport.forEach(file => { csvContent += `"${file.originalName}","${formatBytes(file.size)}","${file.url}"\n`; });
+  let csvContent = "Original Name,Date Added,File Size,CDN Link\n";
+  filesToExport.forEach(file => { csvContent += `"${file.originalName}","${file.dateFormatted}","${formatBytes(file.size)}","${file.url}"\n`; });
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement("a");
   link.setAttribute("href", URL.createObjectURL(blob));
