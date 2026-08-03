@@ -152,8 +152,8 @@
     .toolbar-actions { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
     .view-toggles { display: flex; gap: 0.25rem; background: var(--bg-surface); padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
 
-    /* Custom Sort Select Styling */
-    select.sort-select { padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); cursor: pointer; transition: 0.2s; font-family: inherit; }
+    /* Custom Sort Select Styling (FIXED WIDTH OVERRIDE) */
+    select.sort-select { width: max-content; padding: 0.6rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); cursor: pointer; transition: 0.2s; font-family: inherit; }
     select.sort-select:hover { border-color: var(--primary); }
     select.sort-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
 
@@ -356,7 +356,7 @@
 
               <div class="toolbar-actions" id="toolbarActions">
                 
-                <!-- NEW: Dynamic Sorting Dropdown -->
+                <!-- Fixed Width Dynamic Sorting Dropdown -->
                 <select id="sortSelect" class="sort-select" onchange="changeSortMode(this.value)">
                   <option value="newest">Newest First</option>
                   <option value="oldest">Oldest First</option>
@@ -374,7 +374,7 @@
                 </button>
                 <input type="file" id="explorerFileInput" accept="image/*,video/*" multiple style="display: none;" onchange="handleExplorerUpload(this)">
                 
-                <div class="view-toggles">
+                <div class="view-toggles" style="margin-left: 0.5rem;">
                   <button class="icon-btn active-view" id="btn-view-list" onclick="changeViewMode('list')" title="List View">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
                   </button>
@@ -382,7 +382,7 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm7 0h5v-6h-5v6zm7 0h5v-6h-5v6zm-7-13v6h5V5h-5zm7 0v6h5V5h-5z"/></svg>
                   </button>
                 </div>
-                <button id="historyCsvBtn" class="secondary">
+                <button id="historyCsvBtn" class="secondary" style="margin-left: 0.5rem;">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                   Export
                 </button>
