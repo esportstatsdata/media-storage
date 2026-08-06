@@ -1,1131 +1,518 @@
-let currentUser = null;
-let currentPassword = null;
-let currentPath = ''; 
-let currentHistoryFiles = [];
-window.currentFolders = []; 
-let viewMode = 'list';
-let sortMode = 'newest';
-let rightClickedItem = null; 
-let pendingAction = null; 
-
-// --- Cropper & Queue Variables ---
-let uploadQueue = [];
-let currentCropTargetFolder = '';
-let currentCropFormat = '';
-let cropperInstance = null;
-let currentCropFileIndex = 0;
-let croppedFiles = [];
-
-// --- Session & Theme Persistence on Load ---
-document.addEventListener('DOMContentLoaded', () => {
-  const savedTheme = localStorage.getItem('cdn_theme') || 'dark';
-  if (savedTheme === 'light') {
-    document.body.classList.add('light-theme');
-    updateThemeIcon('light');
-  }
-
-  const savedUser = sessionStorage.getItem('cdn_user');
-  const savedPass = sessionStorage.getItem('cdn_pass');
-  if (savedUser && savedPass) {
-    document.getElementById('loginUser').value = savedUser;
-    document.getElementById('loginPassword').value = savedPass;
-    const submitEvent = new Event('submit', { cancelable: true });
-    handleLogin(submitEvent);
-  }
-});
-
-// --- Theme Toggle Logic ---
-function toggleTheme() {
-  const isLight = document.body.classList.toggle('light-theme');
-  localStorage.setItem('cdn_theme', isLight ? 'light' : 'dark');
-  updateThemeIcon(isLight ? 'light' : 'dark');
-}
-
-function updateThemeIcon(theme) {
-  const btn = document.getElementById('themeToggleBtn');
-  if (!btn) return;
-  if (theme === 'light') {
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
-  } else {
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
-  }
-}
-
-// --- Toast Notifications ---
-function showToast(message, type = 'info', duration = 3000) {
-  const container = document.getElementById('toastContainer');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studio CDN | Media Manager</title>
   
-  let iconHtml = '';
-  if (type === 'success') {
-    iconHtml = `<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--success)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
-  } else if (type === 'danger') {
-    iconHtml = `<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--danger)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
-  } else if (type === 'loading') {
-    iconHtml = `<div class="spinner"></div>`;
-  } else {
-    iconHtml = `<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
-  }
-
-  toast.innerHTML = `${iconHtml} <div style="flex: 1; width: 100%;">${message}</div>`;
-  container.appendChild(toast);
-
-  if (duration > 0) {
-    setTimeout(() => {
-      toast.style.animation = 'fadeOut 0.3s forwards';
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
-  }
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff7b00'><path d='M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z'/></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
-  return toast; 
-}
+  <!-- Cropper.js CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
 
-// --- Password Eye Toggle ---
-function togglePassword() {
-  const pwdInput = document.getElementById('loginPassword');
-  const eyeIcon = document.getElementById('eyeIcon');
-  if (pwdInput.type === 'password') {
-    pwdInput.type = 'text';
-    eyeIcon.innerHTML = `<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>`;
-  } else {
-    pwdInput.type = 'password';
-    eyeIcon.innerHTML = `<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>`;
-  }
-}
-
-// --- Authentication ---
-async function handleLogin(e) {
-  if(e) e.preventDefault();
-  const user = document.getElementById('loginUser').value;
-  const password = document.getElementById('loginPassword').value;
-  const btn = document.getElementById('loginBtn');
-  const errorDiv = document.getElementById('loginError');
-  
-  btn.innerText = "Authorizing...";
-  btn.disabled = true;
-  errorDiv.innerText = "";
-
-  try {
-    const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user, password })
-    });
-
-    const data = await res.json();
-
-    if (res.ok && data.success) {
-      currentUser = user;
-      currentPassword = password; 
-      
-      sessionStorage.setItem('cdn_user', user);
-      sessionStorage.setItem('cdn_pass', password);
-      
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('appScreen').style.display = 'flex'; 
-      document.getElementById('userNameDisplay').innerText = currentUser;
-      document.getElementById('userAvatar').innerText = currentUser.charAt(0).toUpperCase();
-      document.getElementById('loginPassword').value = '';
-      
-      loadFolders();
-    } else {
-      errorDiv.innerText = data.message || "Authentication failed.";
-      sessionStorage.clear();
+  <style>
+    /* Default Dark Theme Variables */
+    :root {
+      --bg-base: #0a0a0b;
+      --bg-surface: #141517;
+      --bg-surface-hover: #1e1f22;
+      --border: #333538;
+      --text-main: #e8e8e8;
+      --text-muted: #9a9a9a;
+      --text-title: #ffffff;
+      --primary: #ff7b00;
+      --primary-hover: #e66e00;
+      --primary-alpha: rgba(255, 123, 0, 0.12);
+      --danger: #ef4444;
+      --success: #10b981;
+      --shadow-heavy: 0 30px 60px rgba(0,0,0,0.8);
+      --shadow-modal: 0 25px 50px rgba(0,0,0,0.5);
+      --shadow-toast: 0 10px 30px rgba(0,0,0,0.5);
+      --context-menu-bg: rgba(20, 21, 23, 0.95);
     }
-  } catch (err) {
-    errorDiv.innerText = "Network error. Please try again.";
-  }
-  btn.innerText = "Authorize Access";
-  btn.disabled = false;
-}
 
-function logout() {
-  currentUser = null; currentPassword = null;
-  sessionStorage.clear();
-  document.getElementById('appScreen').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginUser').value = '';
-}
-
-// --- Navigation ---
-function switchTab(tabId) {
-  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
-  
-  if(tabId === 'upload') {
-    document.getElementById('nav-upload').classList.add('active');
-    document.getElementById('uploadTab').classList.add('active');
-    loadFolders(); 
-  } else {
-    document.getElementById('nav-history').classList.add('active');
-    document.getElementById('historyTab').classList.add('active');
-    currentPath = ''; 
-    loadDirectoryContents();
-  }
-}
-
-// --- Cropper Intercept & Queue Engine ---
-function handleFilesSelection(files, targetFolder, formatSelect) {
-  uploadQueue = Array.from(files);
-  croppedFiles = [];
-  currentCropTargetFolder = targetFolder;
-  currentCropFormat = formatSelect;
-  currentCropFileIndex = 0;
-  
-  // Disable push button temporarily
-  const btn = document.getElementById('uploadBtn');
-  if (btn) btn.disabled = true;
-
-  processNextInQueue();
-}
-
-function processNextInQueue() {
-  if (currentCropFileIndex >= uploadQueue.length) {
-    // All files parsed, start the actual upload deployment
-    if (croppedFiles.length > 0) {
-      performUpload(croppedFiles, currentCropTargetFolder, currentCropFormat);
-    } else {
-      // Un-disable button if the user aborted the queue
-      const btn = document.getElementById('uploadBtn');
-      if (btn) btn.disabled = false;
+    /* Light Theme Override Variables */
+    body.light-theme {
+      --bg-base: #f4f4f5;
+      --bg-surface: #ffffff;
+      --bg-surface-hover: #f8fafc;
+      --border: #e4e4e7;
+      --text-main: #18181b;
+      --text-muted: #71717a;
+      --text-title: #000000;
+      --primary-alpha: rgba(255, 123, 0, 0.08);
+      --shadow-heavy: 0 20px 40px rgba(0,0,0,0.08);
+      --shadow-modal: 0 15px 35px rgba(0,0,0,0.1);
+      --shadow-toast: 0 10px 20px rgba(0,0,0,0.1);
+      --context-menu-bg: rgba(255, 255, 255, 0.95);
     }
-    return;
-  }
-  
-  const file = uploadQueue[currentCropFileIndex];
-  
-  // Only launch Cropper for images (Skip SVG or Video)
-  if (file.type.startsWith('image/') && !file.type.includes('svg')) {
-    openCropModal(file);
-  } else {
-    // Automatically skip non-images directly into the processed queue
-    croppedFiles.push(file); 
-    currentCropFileIndex++;
-    processNextInQueue();
-  }
-}
 
-function openCropModal(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = document.getElementById('cropImage');
-    img.src = e.target.result;
-    document.getElementById('cropModal').style.display = 'flex';
+    /* Prevent browser scroll entirely */
+    body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-base); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; transition: background-color 0.3s ease, color 0.3s ease; }
+
+    /* Custom Integrated Scrollbar */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; border: 2px solid var(--bg-base); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* --- Brand & Login --- */
+    .brand-title { font-family: 'Cinzel', serif; font-size: 1.5rem; letter-spacing: 1px; color: var(--text-title); }
     
-    if (cropperInstance) cropperInstance.destroy();
+    #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: var(--bg-base); background-image: radial-gradient(circle at top, rgba(255, 123, 0, 0.05) 0%, transparent 40%); position: absolute; z-index: 9999; }
+    .login-card { background: var(--bg-surface); padding: 3.5rem 3rem; border-radius: 12px; border: 1px solid var(--border); border-top: 3px solid var(--primary); width: 100%; max-width: 400px; box-shadow: var(--shadow-heavy); text-align: center; }
+    .login-card h2 { margin: 1rem 0 0.5rem 0; font-family: 'Cinzel', serif; font-size: 2rem; color: var(--text-title); }
+    .login-card p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* --- Layout --- */
+    #appScreen { display: none; width: 100%; height: 100%; }
+    .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 1rem; box-sizing: border-box; z-index: 10; transition: background-color 0.3s ease, border-color 0.3s ease; }
+    .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.5rem; padding-left: 0.5rem; }
     
-    cropperInstance = new Cropper(img, {
-      viewMode: 2,
-      background: false,
-      autoCropArea: 1,
-      responsive: true
-    });
-  };
-  reader.readAsDataURL(file);
-}
+    .nav-btn { background: transparent; border: none; color: var(--text-main); padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 1rem; transition: 0.2s; width: 100%; text-align: left; margin-bottom: 0.5rem; }
+    .nav-btn:hover { background: var(--bg-surface-hover); }
+    .nav-btn.active { background: var(--primary-alpha); color: var(--primary); font-weight: 600; border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; }
+    .nav-btn.active svg { fill: var(--primary); }
 
-function setCropRatio(ratio) {
-  if (cropperInstance) cropperInstance.setAspectRatio(ratio);
-}
+    .new-btn { background: var(--primary); color: #fff; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: 0.2s; margin-bottom: 2rem; width: 100%; justify-content: center; }
+    .new-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
 
-function cancelCrop() {
-  // Push the original file unaltered and move to the next
-  croppedFiles.push(uploadQueue[currentCropFileIndex]);
-  document.getElementById('cropModal').style.display = 'none';
-  if (cropperInstance) cropperInstance.destroy();
-  currentCropFileIndex++;
-  processNextInQueue();
-}
-
-function applyCrop() {
-  if (!cropperInstance) return;
-  const originalFile = uploadQueue[currentCropFileIndex];
-  
-  cropperInstance.getCroppedCanvas({
-    imageSmoothingEnabled: true,
-    imageSmoothingQuality: 'high',
-  }).toBlob((blob) => {
-    // Wrap the Cropper blob into a new File object
-    const croppedFile = new File([blob], originalFile.name, {
-      type: blob.type,
-      lastModified: Date.now()
-    });
-    croppedFiles.push(croppedFile);
-    document.getElementById('cropModal').style.display = 'none';
-    cropperInstance.destroy();
+    .user-profile { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .user-info { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+    .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+    .logout-btn:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
     
-    currentCropFileIndex++;
-    processNextInQueue();
-  }, originalFile.type === 'image/webp' ? 'image/webp' : 'image/jpeg', 0.95);
-}
+    .theme-btn:hover { color: var(--primary); background: var(--primary-alpha); }
 
-function abortAllUploads() {
-  document.getElementById('cropModal').style.display = 'none';
-  if (cropperInstance) cropperInstance.destroy();
-  uploadQueue = [];
-  croppedFiles = [];
-  showToast("Deployment aborted.", "info");
-  
-  const btn = document.getElementById('uploadBtn');
-  if (btn) btn.disabled = false;
-}
-
-// --- Centralized Upload Engine ---
-async function performUpload(files, targetFolder, targetFormat) {
-  if (!files.length) return;
-  
-  let successCount = 0;
-  let loadingToast = showToast(`Deploying [1/${files.length}]: ${files[0].name}`, 'loading', 0);
-  const toastText = loadingToast.querySelector('div[style*="flex: 1"]');
-
-  for (let i = 0; i < files.length; i++) {
-    if(toastText) toastText.innerHTML = `Deploying [${i + 1}/${files.length}]: ${files[i].name}`;
-    try {
-      const { base64, extension } = await processFile(files[i], targetFormat);
-      const baseName = files[i].name.substring(0, files[i].name.lastIndexOf('.')) || files[i].name;
-      const timestampedName = `${Date.now()}-${baseName.replace(/\s+/g, '-')}.${extension}`;
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileData: base64, fileName: timestampedName, user: currentUser, folder: targetFolder })
-      });
-      if (res.ok) successCount++;
-    } catch (e) {}
-  }
-  
-  loadingToast.remove();
-  if (successCount > 0) {
-      showToast(`Deployment Complete: ${successCount} asset(s) pushed. Syncing display...`, 'success');
-  } else {
-      showToast(`Deployment failed.`, 'danger');
-  }
-  
-  loadFolders(); 
-  
-  if (document.getElementById('historyTab').classList.contains('active')) {
-     setTimeout(() => {
-         loadDirectoryContents(currentPath);
-     }, 1500);
-  }
-  
-  const btn = document.getElementById('uploadBtn');
-  if (btn) btn.disabled = false;
-}
-
-function processFile(file, targetFormat) {
-  return new Promise((resolve, reject) => {
-    const originalExtension = file.name.split('.').pop().toLowerCase();
-    if (!file.type.startsWith('image/') || targetFormat === 'original') {
-      const reader = new FileReader();
-      reader.onload = () => resolve({ base64: reader.result.split(',')[1], extension: originalExtension });
-      reader.onerror = reject; reader.readAsDataURL(file); return;
-    }
-    const img = new Image(); const reader = new FileReader();
-    reader.onload = (e) => {
-      img.onload = () => {
-        const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height); 
-        ctx.drawImage(img, 0, 0);
-        const mimeType = targetFormat === 'webp' ? 'image/webp' : 'image/png';
-        resolve({ base64: canvas.toDataURL(mimeType, 0.9).split(',')[1], extension: targetFormat });
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// --- Upload Tab Specific UI Listeners ---
-async function loadFolders() {
-  const select = document.getElementById('folderSelect');
-  if(!select) return;
-  select.innerHTML = '<option value="">Loading...</option>';
-  try {
-    const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders&t=${Date.now()}`);
-    const data = await res.json();
+    /* Adjusted Main Content */
+    .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg-base); }
     
-    select.innerHTML = '<option value="">/ (Root Directory)</option>';
-    if (data.folders) data.folders.forEach(f => select.innerHTML += `<option value="${f}">/${f}</option>`);
-    select.innerHTML += '<option value="new_folder">+ Create New Target Path</option>';
+    .view-section { display: none; width: 100%; height: 100%; flex-direction: column; overflow: hidden; }
+    .view-section.active { display: flex; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .tab-header { padding: 2.5rem 3rem 1.5rem 3rem; flex-shrink: 0; z-index: 5; background: var(--bg-base); overflow: visible; }
+    .tab-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0.5rem 3rem 3rem 3rem; }
+    .content-wrapper { max-width: 1600px; margin: 0 auto; width: 100%; box-sizing: border-box; overflow: visible; }
+
+    /* --- Forms & Buttons --- */
+    .form-group { margin-bottom: 1.5rem; text-align: left; position: relative; }
+    label { font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="text"], input[type="password"], select { width: 100%; padding: 0.85rem 1rem; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; font-size: 0.95rem; font-family: inherit; transition: 0.2s; box-sizing: border-box; }
+    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
     
-    select.value = "";
-    toggleNewFolderInput();
-  } catch (error) {
-    select.innerHTML = '<option value="">/ (Root Directory)</option><option value="new_folder">+ Create New Target Path</option>';
-    toggleNewFolderInput();
-  }
-}
+    .password-wrapper { position: relative; display: flex; align-items: center; }
+    .eye-toggle { position: absolute; right: 12px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .eye-toggle:hover { color: var(--text-main); }
 
-function toggleNewFolderInput() {
-  const s = document.getElementById('folderSelect');
-  const i = document.getElementById('newFolderInput');
-  if(s && i) i.style.display = s.value === 'new_folder' ? 'block' : 'none';
-}
+    .file-drop-area { border: 2px dashed var(--border); border-radius: 8px; padding: 3rem 2rem; text-align: center; background: var(--bg-surface); cursor: pointer; transition: 0.2s; position: relative; }
+    .file-drop-area:hover { border-color: var(--primary); background: var(--primary-alpha); }
+    .file-drop-area input[type="file"] { position: absolute; left: 0; top: 0; height: 100%; width: 100%; opacity: 0; cursor: pointer; }
+    
+    button.primary { background: var(--primary); color: #fff; border: none; padding: 0.85rem 1.5rem; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.95rem; transition: 0.2s; width: max-content; }
+    button.primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+    
+    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; transition: 0.2s; box-sizing: border-box; }
+    button.secondary:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-alpha); }
+    
+    .icon-btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); cursor: pointer; padding: 0.4rem; border-radius: 4px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+    .icon-btn:hover { color: var(--primary); background: var(--primary-alpha); }
+    .icon-btn.active-view { color: var(--primary); background: var(--primary-alpha); border-color: var(--primary); }
+    
+    /* --- Loader & Toasts --- */
+    .loader-container { padding: 3rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted); }
+    .spinner { border: 3px solid rgba(255, 123, 0, 0.15); border-top: 3px solid var(--primary); border-radius: 50%; width: 32px; height: 32px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-function getSelectedFolder() {
-  const s = document.getElementById('folderSelect');
-  if(!s) return '';
-  return s.value === 'new_folder' ? document.getElementById('newFolderInput').value.trim() : s.value;
-}
+    .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 10001; display: flex; flex-direction: column; gap: 0.75rem; pointer-events: none; }
+    .toast { background: var(--bg-surface); border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 1rem 1.5rem; border-radius: 8px; box-shadow: var(--shadow-toast); color: var(--text-main); font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 0.75rem; animation: slideInRight 0.3s forwards; pointer-events: auto; min-width: 280px; max-width: 400px; }
+    .toast.success { border-left-color: var(--success); }
+    .toast.danger { border-left-color: var(--danger); }
+    .toast .spinner { width: 16px; height: 16px; border-width: 2px; }
+    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { to { opacity: 0; } }
 
-function updateFileMsg() {
-  const input = document.getElementById('fileInput');
-  const msg = document.getElementById('fileMsg');
-  if (input.files && input.files.length > 1) {
-    msg.innerText = `${input.files.length} assets queued`; msg.style.color = "var(--primary)";
-  } else if (input.files && input.files.length === 1) {
-    msg.innerText = input.files[0].name; msg.style.color = "var(--primary)";
-  } else {
-    msg.innerText = "or click to browse local storage"; msg.style.color = "var(--text-muted)";
-  }
-}
+    /* --- Drag & Drop Explorer Overlay --- */
+    .explorer-drop-zone { position: fixed; top: 1.5rem; right: 1.5rem; bottom: 1.5rem; left: calc(280px + 1.5rem); background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 1000; display: none; align-items: center; justify-content: center; border: 2px dashed var(--primary); border-radius: 8px; }
+    body.light-theme .explorer-drop-zone { background: rgba(255,255,255,0.85); }
+    .explorer-drop-zone.active { display: flex; }
+    .drop-zone-content { text-align: center; color: var(--primary); pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .drop-zone-content h2 { margin: 0; font-family: 'Cinzel', serif; font-size: 1.75rem; }
 
-document.getElementById('uploadBtn').addEventListener('click', async () => {
-  const fileInput = document.getElementById('fileInput');
-  const formatSelect = document.getElementById('formatSelect').value;
-  const targetFolder = getSelectedFolder(); 
-  
-  const files = Array.from(fileInput.files);
-  if (!files.length) { showToast("No assets selected.", "danger"); return; }
+    /* --- Toolbar & Search --- */
+    .section-header { font-size: 1.75rem; font-family: 'Cinzel', serif; color: var(--text-title); margin: 0; white-space: nowrap; }
+    .header-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; overflow: visible; }
+    
+    .search-container { display: flex; align-items: center; position: relative; flex: 1; min-width: 250px; max-width: 450px; margin-right: auto; }
+    .search-container:focus-within .search-icon { fill: var(--primary); }
+    input[type="text"].search-input { width: 100%; padding: 0.65rem 1rem 0.65rem 2.75rem; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); border-radius: 24px; font-size: 0.9rem; transition: all 0.2s ease; }
+    input[type="text"].search-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); background: var(--bg-base); }
+    .search-icon { position: absolute; left: 14px; fill: var(--text-muted); width: 18px; height: 18px; pointer-events: none; transition: fill 0.2s ease; }
 
-  // Hand off to the Interceptor Queue instead of uploading directly
-  handleFilesSelection(files, targetFolder, formatSelect);
-  
-  fileInput.value = ""; updateFileMsg(); 
-});
+    .toolbar-actions { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .view-toggles { display: flex; gap: 0.25rem; background: var(--bg-surface); padding: 0.25rem; border-radius: 6px; border: 1px solid var(--border); }
 
-// --- Explorer Inline Upload & Drag/Drop Logic ---
-function handleExplorerUpload(input) {
-  const files = Array.from(input.files);
-  if(!files.length) return;
-  const format = document.getElementById('formatSelect') ? document.getElementById('formatSelect').value : 'original';
-  handleFilesSelection(files, currentPath, format);
-  input.value = "";
-}
+    /* Sort Select */
+    select.sort-select { width: max-content; padding: 0.6rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); cursor: pointer; transition: 0.2s; font-family: inherit; }
+    select.sort-select:hover { border-color: var(--primary); }
+    select.sort-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-alpha); }
 
-const mainContentElement = document.querySelector('.main-content');
-const dropZoneElement = document.getElementById('explorerDropZone');
+    /* --- Explorer Layout --- */
+    .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; padding: 1rem 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
+    .crumb { color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 0.5rem; }
+    .crumb:hover { color: var(--primary); }
+    .crumb.active { color: var(--text-main); cursor: default; }
+    .crumb-separator { color: var(--border); }
 
-mainContentElement.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  if (currentUser && document.getElementById('historyTab').classList.contains('active')) {
-      dropZoneElement.classList.add('active'); 
-  }
-});
+    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .folder-card { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; background: var(--bg-surface); border-radius: 8px; cursor: context-menu; border: 1px solid var(--border); transition: 0.2s; font-weight: 500; font-size: 0.95rem; box-sizing: border-box; }
+    .folder-card svg { fill: var(--primary); }
+    .folder-card:hover { background: var(--bg-surface-hover); border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
-dropZoneElement.addEventListener('dragleave', (e) => {
-  e.preventDefault();
-  dropZoneElement.classList.remove('active');
-});
+    .table-container { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; }
+    th { color: var(--text-muted); font-weight: 600; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: var(--bg-base); position: sticky; top: 0; z-index: 2; }
+    td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr { transition: 0.2s; cursor: context-menu; }
+    tr:hover td { background: var(--bg-surface-hover); }
+    .file-name-wrapper { display: flex; align-items: center; gap: 0.75rem; }
+    .file-name-wrapper svg { fill: var(--text-muted); flex-shrink: 0; }
+    .truncate-url { max-width: 250px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; color: var(--text-muted); margin-right: auto; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
-dropZoneElement.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dropZoneElement.classList.remove('active');
-  const files = Array.from(e.dataTransfer.files);
-  if (!files.length) return;
-  const format = document.getElementById('formatSelect') ? document.getElementById('formatSelect').value : 'original';
-  handleFilesSelection(files, currentPath, format);
-});
+    .grid-view-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; padding-bottom: 1rem; }
+    .grid-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; cursor: context-menu; }
+    .grid-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
+    .grid-preview { height: 140px; background: var(--bg-base); display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
+    .grid-preview img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .grid-preview svg { width: 48px; height: 48px; fill: var(--text-muted); opacity: 0.5; }
+    .grid-info { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .grid-title { font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+    .grid-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
 
-// --- Explorer Utilities ---
-function formatBytes(bytes) {
-  if (!bytes || bytes === 0) return '0 Bytes';
-  const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+    /* --- Right-Click Context Menu --- */
+    .context-menu { display: none; position: fixed; z-index: 10000; width: 220px; background: var(--context-menu-bg); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-toast); padding: 0.5rem; flex-direction: column; }
+    .context-menu-item { padding: 0.65rem 1rem; color: var(--text-main); cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; font-weight: 500; transition: 0.2s; }
+    .context-menu-item svg { fill: currentColor; }
+    .context-menu-item:hover { background: var(--bg-surface-hover); color: var(--primary); }
+    .context-menu-item.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+    .context-divider { height: 1px; background: var(--border); margin: 0.5rem 0; }
 
-function isImageExtension(fileName) {
-  const ext = fileName.split('.').pop().toLowerCase();
-  return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
-}
+    /* --- Modals --- */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; justify-content: center; align-items: center; opacity: 0; animation: fadeIn 0.2s forwards; }
+    .modal-content { background: var(--bg-surface); padding: 2rem; border-radius: 12px; max-width: 90vw; max-height: 90vh; position: relative; border: 1px solid var(--border); display: flex; flex-direction: column; box-shadow: var(--shadow-modal); }
+    .modal-close { position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
+    .modal-close:hover { color: var(--danger); }
+    
+    .action-box { width: 400px; text-align: left; }
+    .action-box h3 { margin-top: 0; margin-bottom: 1.5rem; color: var(--text-title); font-family: 'Cinzel', serif; font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
+    
+    .preview-media { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px; }
+    .error-text { color: var(--danger); margin-top: 1rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
 
-// --- Sorting Logic ---
-function changeSortMode(mode) {
-  sortMode = mode;
-  renderFiles();
-}
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
 
-function getSortedItems(filesToRender, foldersToRender) {
-  let sortedFiles = [...filesToRender];
-  let sortedFolders = [...foldersToRender];
-
-  if (sortMode === 'az') {
-    sortedFiles.sort((a, b) => a.originalName.localeCompare(b.originalName));
-    sortedFolders.sort((a, b) => a.localeCompare(b));
-  } else if (sortMode === 'za') {
-    sortedFiles.sort((a, b) => b.originalName.localeCompare(a.originalName));
-    sortedFolders.sort((a, b) => b.localeCompare(a));
-  } else if (sortMode === 'newest') {
-    sortedFiles.sort((a, b) => b.timestamp - a.timestamp);
-    sortedFolders.sort((a, b) => a.localeCompare(b)); 
-  } else if (sortMode === 'oldest') {
-    sortedFiles.sort((a, b) => a.timestamp - b.timestamp);
-    sortedFolders.sort((a, b) => a.localeCompare(b)); 
-  }
-  
-  return { sortedFiles, sortedFolders };
-}
-
-// --- Explorer Engine ---
-async function loadDirectoryContents(targetPath = '') {
-  currentPath = targetPath;
-  renderBreadcrumbs();
-  
-  const grid = document.getElementById('historyFolderGrid');
-  const filesSection = document.getElementById('historyFilesSection');
-  const hint = document.getElementById('contextHint');
-  const badge = document.getElementById('itemCountBadge');
-  
-  grid.innerHTML = `
-    <div class="loader-container">
-      <div class="spinner"></div>
-      <div>Syncing Network Storage...</div>
+  <!-- Login Modal -->
+  <div id="loginScreen">
+    <div class="login-card">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+      <h2>Studio CDN</h2>
+      <p>Asset Management Portal</p>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Operator Profile</label>
+          <select id="loginUser" required>
+            <option value="" disabled selected>Select Profile</option>
+            <option value="Shivam">Shivam</option>
+            <option value="Aninda">Aninda</option>
+            <option value="Sharvan">Sharvan</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Security Token</label>
+          <div class="password-wrapper">
+            <input type="password" id="loginPassword" placeholder="Enter your password" required>
+            <button type="button" class="eye-toggle" onclick="togglePassword()" title="Toggle visibility">
+              <svg id="eyeIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="primary" id="loginBtn" style="width: 100%;">Authorize Access</button>
+        <div id="loginError" class="error-text"></div>
+      </form>
     </div>
-  `;
-  filesSection.innerHTML = '';
-  
-  if(hint) hint.style.display = 'none';
-  if(badge) badge.style.display = 'none';
-  document.getElementById('searchInput').value = '';
-  
-  currentHistoryFiles = [];
-  window.currentFolders = [];
-  
-  try {
-    const cacheBuster = `&t=${Date.now()}`;
-    const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(currentPath)}${cacheBuster}`);
-    const data = await res.json();
-    grid.innerHTML = ''; 
-    
-    if (data.folders && data.folders.length > 0) {
-      window.currentFolders = data.folders;
-      if(hint) hint.style.display = 'block';
-    }
+  </div>
 
-    if (data.files && data.files.length > 0) {
-      if(hint) hint.style.display = 'block';
+  <!-- Main Drive UI -->
+  <div id="appScreen">
+    <aside class="sidebar">
+      <div class="brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        <span class="brand-title">STUDIO CDN</span>
+      </div>
       
-      data.files.forEach(file => {
-        const timestampMatch = file.name.match(/^(\d{13})-(.+)$/);
-        
-        let timestamp = 0;
-        let dateFormatted = 'N/A';
-        let originalName = file.name;
-        
-        if (timestampMatch) {
-            timestamp = parseInt(timestampMatch[1], 10);
-            originalName = timestampMatch[2];
-            const d = new Date(timestamp);
-            dateFormatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-        } else {
-            const originalNameMatch = file.name.match(/^\d+-(.+)$/);
-            originalName = originalNameMatch ? originalNameMatch[1] : file.name;
-        }
+      <button class="new-btn" onclick="switchTab('upload')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        New Deployment
+      </button>
 
-        currentHistoryFiles.push({
-          rawName: file.name,
-          originalName: originalName,
-          timestamp: timestamp,
-          dateFormatted: dateFormatted,
-          size: file.size,
-          url: file.url,
-          path: currentPath ? `${currentPath}/${file.name}` : file.name
-        });
-      });
-    }
-    
-    renderFiles();
-    
-    if (window.currentFolders.length === 0 && currentHistoryFiles.length === 0) {
-      grid.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;">Directory is empty. Click <b>Upload Here</b> or drag files to populate it.</div>';
-    }
-    
-  } catch (error) {
-    grid.innerHTML = '<span style="color: var(--danger);">Directory access failed.</span>';
-  }
-}
+      <nav>
+        <button class="nav-btn active" id="nav-upload" onclick="switchTab('upload')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+          Upload Center
+        </button>
+        <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+          Asset Library
+        </button>
+      </nav>
 
-// --- Dynamic View Renderer ---
-function changeViewMode(mode) {
-  viewMode = mode;
-  document.getElementById('btn-view-list').classList.remove('active-view');
-  document.getElementById('btn-view-grid').classList.remove('active-view');
-  document.getElementById(`btn-view-${mode}`).classList.add('active-view');
-  renderFiles();
-}
+      <div class="user-profile">
+        <div class="user-info">
+          <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;" id="userAvatar"></div>
+          <span id="userNameDisplay"></span>
+        </div>
+        <div style="display: flex; gap: 0.25rem;">
+          <button class="logout-btn theme-btn" onclick="toggleTheme()" title="Switch Theme" id="themeToggleBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          </button>
+          <button class="logout-btn" onclick="logout()" title="Logout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
 
-function getFilteredFiles() {
-  const query = document.getElementById('searchInput').value.toLowerCase();
-  return currentHistoryFiles.filter(f => f.originalName.toLowerCase().includes(query) || f.rawName.toLowerCase().includes(query));
-}
+    <main class="main-content">
+      
+      <!-- Drag & Drop Overlay for Entire Explorer Workspace -->
+      <div id="explorerDropZone" class="explorer-drop-zone">
+        <div class="drop-zone-content">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+          <h2>Drop files to deploy into current path</h2>
+        </div>
+      </div>
 
-function getFilteredFolders() {
-  const query = document.getElementById('searchInput').value.toLowerCase();
-  return window.currentFolders.filter(f => f.toLowerCase().includes(query));
-}
+      <!-- UPLOAD TAB -->
+      <div id="uploadTab" class="view-section active">
+        <div class="tab-header">
+          <div class="content-wrapper">
+            <h2 class="section-header" style="margin-bottom: 0;">Deploy Assets</h2>
+          </div>
+        </div>
+        <div class="tab-content">
+          <div class="content-wrapper" style="padding-top: 2rem;">
+            <div style="max-width: 600px;">
+              <div class="form-group">
+                <label>Destination Path</label>
+                <select id="folderSelect" onchange="toggleNewFolderInput()"></select>
+                <input type="text" id="newFolderInput" placeholder="Enter new folder or nested path (e.g. Promos/2026)" style="display: none; margin-top: 0.75rem;">
+              </div>
 
-function renderFiles() {
-  const grid = document.getElementById('historyFolderGrid');
-  const container = document.getElementById('historyFilesSection');
-  
-  let filesToRender = getFilteredFiles();
-  let foldersToRender = getFilteredFolders();
-  
-  // Apply Sort
-  const sorted = getSortedItems(filesToRender, foldersToRender);
-  filesToRender = sorted.sortedFiles;
-  foldersToRender = sorted.sortedFolders;
+              <div class="form-group">
+                <label>Format Optimization</label>
+                <select id="formatSelect">
+                  <option value="original">Keep Original Format</option>
+                  <option value="webp">Force WEBP Conversion (Images)</option>
+                  <option value="png">Force PNG Conversion (Images)</option>
+                </select>
+              </div>
 
-  grid.innerHTML = '';
-  const folderIcon = `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
-  foldersToRender.forEach(folder => {
-    const fPath = currentPath ? `${currentPath}/${folder}` : folder;
-    const div = document.createElement('div');
-    div.className = 'folder-card';
-    div.innerHTML = `${folderIcon} <span>${folder}</span>`;
-    div.onclick = () => loadDirectoryContents(fPath);
-    div.oncontextmenu = (e) => showContextMenu(e, fPath, 'folder', folder);
-    grid.appendChild(div);
-  });
+              <div class="form-group">
+                <label>Select Assets</label>
+                <div class="file-drop-area">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="var(--primary)" style="margin-bottom: 1rem;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                  <div style="font-weight: 500; color: var(--text-main);">Drop files to deploy</div>
+                  <span class="file-msg" id="fileMsg">or click to browse local storage</span>
+                  <input type="file" id="fileInput" accept="image/*,video/*" multiple onchange="updateFileMsg()">
+                </div>
+              </div>
 
-  container.innerHTML = '';
-  
-  const badge = document.getElementById('itemCountBadge');
-  if (badge) {
-    const totalRendered = filesToRender.length + foldersToRender.length;
-    const totalItems = currentHistoryFiles.length + window.currentFolders.length;
-    
-    if (totalItems === 0) {
-      badge.style.display = 'none';
-    } else {
-      badge.style.display = 'block';
-      if (totalRendered < totalItems) {
-        badge.innerHTML = `<span style="color:var(--primary)">${totalRendered}</span> matching out of ${totalItems}`;
-      } else {
-        let fCount = window.currentFolders.length;
-        let fiCount = currentHistoryFiles.length;
-        let textArr = [];
-        if(fCount > 0) textArr.push(`${fCount} Folder${fCount !== 1 ? 's' : ''}`);
-        if(fiCount > 0) textArr.push(`${fiCount} Asset${fiCount !== 1 ? 's' : ''}`);
-        badge.innerHTML = textArr.join(' &nbsp;•&nbsp; ');
-      }
-    }
-  }
-
-  // Do not block rendering if searching yields 0, let user know.
-  if (filesToRender.length === 0 && foldersToRender.length === 0 && (currentHistoryFiles.length > 0 || window.currentFolders.length > 0)) {
-    container.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;">No matching assets found.</div>';
-    return;
-  }
-
-  if (filesToRender.length === 0) return;
-
-  const fileIcon = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
-  const genericIconLarge = `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>`;
-  const copyIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
-  const previewIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
-
-  let html = '';
-  
-  if (viewMode === 'list') {
-    html = `<div class="table-container"><table><thead><tr><th style="width: 40%;">Asset Name</th><th style="width: 15%;">Date Added</th><th style="width: 10%;">Size</th><th>CDN Endpoint & Actions</th></tr></thead><tbody>`;
-    filesToRender.forEach(file => {
-      html += `
-        <tr oncontextmenu="showContextMenu(event, '${file.path}', 'file', '${file.originalName}', '${file.url}')">
-          <td><div class="file-name-wrapper">${fileIcon} <span style="font-weight: 500;">${file.originalName}</span></div></td>
-          <td style="color: var(--text-muted);">${file.dateFormatted}</td>
-          <td style="color: var(--text-muted);">${formatBytes(file.size)}</td>
-          <td>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <a href="${file.url}" target="_blank" class="truncate-url" title="${file.url}">${file.url}</a>
-              <button class="icon-btn" onclick="event.stopPropagation(); openPreview('${file.url}', '${file.rawName}')" title="Preview">${previewIcon}</button>
-              <button class="icon-btn" onclick="event.stopPropagation(); copyToClipboard('${file.url}', this)" title="Copy URL">${copyIcon}</button>
+              <button id="uploadBtn" class="primary">Push to CDN</button>
             </div>
-          </td>
-        </tr>
-      `;
-    });
-    html += `</tbody></table></div>`;
-    
-  } else if (viewMode === 'grid') {
-    html = `<div class="grid-view-container">`;
-    filesToRender.forEach(file => {
-      const isImg = isImageExtension(file.rawName);
-      const previewBlock = isImg ? `<img src="${file.url}" loading="lazy">` : genericIconLarge;
-      html += `
-        <div class="grid-card" oncontextmenu="showContextMenu(event, '${file.path}', 'file', '${file.originalName}', '${file.url}')">
-          <div class="grid-preview" onclick="openPreview('${file.url}', '${file.rawName}')">${previewBlock}</div>
-          <div class="grid-info">
-            <div class="grid-title" title="${file.originalName}">${file.originalName}</div>
-            <div class="grid-meta" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
-              <span>${formatBytes(file.size)} • ${file.dateFormatted}</span>
-              <div style="display:flex; gap:0.25rem; align-self: flex-end; margin-top:-1.25rem;">
-                <button class="icon-btn" onclick="event.stopPropagation(); openPreview('${file.url}', '${file.rawName}')" title="Preview">${previewIcon}</button>
-                <button class="icon-btn" onclick="event.stopPropagation(); copyToClipboard('${file.url}', this)" title="Copy URL">${copyIcon}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPLORER TAB -->
+      <div id="historyTab" class="view-section">
+        
+        <!-- Pinned Header Area -->
+        <div class="tab-header">
+          <div class="content-wrapper">
+            
+            <div class="header-toolbar">
+              <h2 class="section-header">Asset Explorer</h2>
+              <div class="search-container" id="searchContainer">
+                <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search files & folders..." onkeyup="renderFiles()">
+              </div>
+
+              <div class="toolbar-actions" id="toolbarActions">
+                
+                <select id="sortSelect" class="sort-select" onchange="changeSortMode(this.value)">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="az">Name: A to Z</option>
+                  <option value="za">Name: Z to A</option>
+                </select>
+
+                <button class="secondary" onclick="openCreateFolderModal()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
+                  New Folder
+                </button>
+                <button class="secondary" onclick="document.getElementById('explorerFileInput').click()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                  Upload Here
+                </button>
+                <input type="file" id="explorerFileInput" accept="image/*,video/*" multiple style="display: none;" onchange="handleExplorerUpload(this)">
+                
+                <div class="view-toggles" style="margin-left: 0.5rem;">
+                  <button class="icon-btn active-view" id="btn-view-list" onclick="changeViewMode('list')" title="List View">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+                  </button>
+                  <button class="icon-btn" id="btn-view-grid" onclick="changeViewMode('grid')" title="Grid View">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm7 0h5v-6h-5v6zm7 0h5v-6h-5v6zm-7-13v6h5V5h-5zm7 0v6h5V5h-5z"/></svg>
+                  </button>
+                </div>
+                <button id="historyCsvBtn" class="secondary" style="margin-left: 0.5rem;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                  Export
+                </button>
               </div>
             </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+              <div class="breadcrumbs" id="breadcrumbNav" style="margin-bottom: 0; flex: 1;"></div>
+              <div id="itemCountBadge" style="background: var(--bg-surface); border: 1px solid var(--border); padding: 0.85rem 1.25rem; border-radius: 8px; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; display: none; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
+            </div>
+          
           </div>
         </div>
-      `;
-    });
-    html += `</div>`;
-  }
 
-  container.innerHTML = html;
-}
-
-function renderBreadcrumbs() {
-  const nav = document.getElementById('breadcrumbNav');
-  const homeIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`;
-  if (!currentPath) { nav.innerHTML = `<span class="crumb active">${homeIcon} Root Directory</span>`; return; }
-
-  const parts = currentPath.split('/');
-  let html = `<span class="crumb" onclick="loadDirectoryContents('')">${homeIcon} Root</span>`;
-  let accumulatedPath = '';
-  
-  parts.forEach((part, index) => {
-    accumulatedPath += (index === 0 ? part : `/${part}`);
-    html += `<span class="crumb-separator">/</span>`;
-    if (index === parts.length - 1) html += `<span class="crumb active">${part}</span>`;
-    else html += `<span class="crumb" onclick="loadDirectoryContents('${accumulatedPath}')">${part}</span>`;
-  });
-  nav.innerHTML = html;
-}
-
-// --- Context Menu Logic ---
-function showContextMenu(e, path, type, originalName, url = null) {
-  e.preventDefault();
-  e.stopPropagation();
-  
-  rightClickedItem = { path, type, originalName, url };
-  
-  const menu = document.getElementById('contextMenu');
-  const previewItem = document.getElementById('menu-preview');
-  const copyItem = document.getElementById('menu-copy');
-  const divider = document.getElementById('menu-divider-1');
-
-  if (type === 'folder') {
-    previewItem.style.display = 'none';
-    copyItem.style.display = 'none';
-    divider.style.display = 'none';
-  } else {
-    previewItem.style.display = 'flex';
-    copyItem.style.display = 'flex';
-    divider.style.display = 'block';
-  }
-  
-  menu.style.display = 'flex';
-  
-  let x = e.pageX; let y = e.pageY;
-  if (x + 220 > window.innerWidth) x = window.innerWidth - 230;
-  if (y + 250 > window.innerHeight) y = window.innerHeight - 260;
-  
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
-}
-
-document.addEventListener('click', () => { document.getElementById('contextMenu').style.display = 'none'; });
-
-async function triggerContextAction(action) {
-  if (!rightClickedItem) return;
-  document.getElementById('contextMenu').style.display = 'none';
-  
-  if (action === 'preview') {
-    openPreview(rightClickedItem.url, rightClickedItem.originalName);
-  } else if (action === 'copy') {
-    copyToClipboard(rightClickedItem.url, null, true);
-  } else if (action === 'delete') {
-    if(confirm(`WARNING: Are you sure you want to permanently delete '${rightClickedItem.originalName}'?`)) {
-      executeAction('DELETE');
-    }
-  } else if (action === 'download') {
-    downloadAsset(rightClickedItem);
-  } else {
-    pendingAction = action.toUpperCase();
-    const modal = document.getElementById('actionModal');
-    const title = document.getElementById('actionModalTitle');
-    const inputGroup = document.getElementById('actionInputGroup');
-    const folderGroup = document.getElementById('actionFolderGroup');
-    const label = document.getElementById('actionLabel');
-    const input = document.getElementById('actionInput');
-    const select = document.getElementById('actionFolderSelect');
-    
-    document.getElementById('actionError').innerText = "";
-    
-    if (pendingAction === 'RENAME') {
-      folderGroup.style.display = 'none';
-      inputGroup.style.display = 'block';
-      title.innerText = rightClickedItem.type === 'folder' ? 'Rename Folder' : 'Rename Asset';
-      label.innerText = 'New Name (include extension for files)';
-      const parts = rightClickedItem.path.split('/');
-      input.value = parts.pop(); 
-    } else {
-      title.innerText = pendingAction === 'MOVE' ? 'Move Asset' : 'Duplicate Asset';
-      folderGroup.style.display = 'block';
-      inputGroup.style.display = 'none'; 
-      
-      select.innerHTML = '<option value="">Loading directories...</option>';
-      modal.style.display = 'flex';
-      
-      try {
-        const res = await fetch(`/api/files?user=${currentUser}&action=getAllFolders&t=${Date.now()}`);
-        const data = await res.json();
-        const allFolders = data.folders || [];
-        
-        select.innerHTML = '<option value="">/ (Root Directory)</option>';
-        allFolders.forEach(f => {
-          if (rightClickedItem.type === 'folder' && f.startsWith(rightClickedItem.path)) return;
-          select.innerHTML += `<option value="${f}">/${f}</option>`;
-        });
-        select.innerHTML += '<option value="new_path">+ Create New Target Path</option>';
-      } catch(e) {
-        select.innerHTML = '<option value="">/ (Root Directory)</option><option value="new_path">+ Create New Target Path</option>';
-      }
-      select.value = "";
-    }
-    
-    modal.style.display = 'flex';
-    if (pendingAction === 'RENAME') input.focus();
-  }
-}
-
-// --- Create Folder Logic ---
-function openCreateFolderModal() {
-  pendingAction = 'CREATE_FOLDER';
-  const modal = document.getElementById('actionModal');
-  document.getElementById('actionModalTitle').innerText = 'Create New Folder';
-  document.getElementById('actionLabel').innerText = 'Folder Name';
-  document.getElementById('actionFolderGroup').style.display = 'none';
-  document.getElementById('actionInputGroup').style.display = 'block';
-  document.getElementById('actionInput').value = '';
-  document.getElementById('actionError').innerText = '';
-  modal.style.display = 'flex';
-  document.getElementById('actionInput').focus();
-}
-
-// --- Download Logic (JSZip Integration with ETA) ---
-async function fetchAllFilesRecursively(basePath) {
-  let allFiles = [];
-  const res = await fetch(`/api/files?user=${currentUser}&path=${encodeURIComponent(basePath)}&t=${Date.now()}`);
-  const data = await res.json();
-
-  if (data.files) {
-    data.files.forEach(f => {
-      allFiles.push({
-        ...f,
-        path: basePath ? `${basePath}/${f.name}` : f.name
-      });
-    });
-  }
-
-  if (data.folders) {
-    for (let folder of data.folders) {
-      const subPath = basePath ? `${basePath}/${folder}` : folder;
-      const subFiles = await fetchAllFilesRecursively(subPath);
-      allFiles.push(...subFiles);
-    }
-  }
-  return allFiles;
-}
-
-async function downloadAsset(item) {
-  if (item.type === 'file') {
-    const toast = showToast(`Downloading ${item.originalName}...`, 'loading', 0);
-    try {
-      const res = await fetch(item.url);
-      const blob = await res.blob();
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = item.originalName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.remove();
-      showToast('Download complete!', 'success');
-    } catch (e) {
-      toast.remove();
-      showToast('Download failed.', 'danger');
-    }
-  } else if (item.type === 'folder') {
-    if (typeof JSZip === 'undefined') {
-      showToast('Compression library not loaded. Please refresh.', 'danger');
-      return;
-    }
-    
-    const toast = showToast(`Analyzing folder '${item.originalName}'...`, 'loading', 0);
-    const toastText = toast.querySelector('div[style*="flex: 1"]'); 
-    
-    try {
-      const filesToZip = await fetchAllFilesRecursively(item.path);
-
-      if (filesToZip.length === 0) {
-        toast.remove();
-        showToast('Folder is empty.', 'info');
-        return;
-      }
-
-      const zip = new JSZip();
-      const totalFiles = filesToZip.length;
-      let loadedFiles = 0;
-      const startTime = Date.now();
-
-      for (let file of filesToZip) {
-        const relativePath = file.path.substring(item.path.length + 1);
-        const res = await fetch(file.url);
-        const blob = await res.blob();
-        zip.file(relativePath, blob);
-
-        loadedFiles++;
-        
-        const percent = ((loadedFiles / totalFiles) * 100).toFixed(0);
-        const elapsedMs = Date.now() - startTime;
-        const avgTimePerFile = elapsedMs / loadedFiles;
-        const remainingFiles = totalFiles - loadedFiles;
-        const etaSec = Math.ceil((remainingFiles * avgTimePerFile) / 1000);
-        
-        let etaString = etaSec > 60 ? `${Math.floor(etaSec/60)}m ${etaSec%60}s` : `${etaSec}s`;
-
-        toastText.innerHTML = `
-          <div style="display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 240px;">
-            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-              <span>Fetching Assets...</span>
-              <span style="color: var(--primary); font-weight: 600;">${percent}%</span>
-            </div>
-            <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border);">
-              <div style="width: ${percent}%; height: 100%; background: var(--primary); transition: width 0.2s ease;"></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
-              <span>${loadedFiles} / ${totalFiles} files</span>
-              <span>ETA: ${etaString}</span>
-            </div>
+        <!-- Scrollable Content Area -->
+        <div class="tab-content">
+          <div class="content-wrapper">
+            <div id="historyFolderGrid" class="folder-grid"></div>
+            <div id="historyFilesSection"></div>
+            <div style="margin-top: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;" id="contextHint">Right-click any folder or file for advanced actions.</div>
           </div>
-        `;
-      }
-
-      toastText.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 240px;">
-          <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-            <span>Compressing Archive...</span>
-            <span style="color: var(--primary); font-weight: 600;" id="zipPercent">0%</span>
-          </div>
-          <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border);">
-            <div id="zipProgressBar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear;"></div>
-          </div>
-          <div style="font-size: 0.75rem; color: var(--text-muted);">Packaging ${totalFiles} files into .zip</div>
         </div>
-      `;
 
-      const zipBlob = await zip.generateAsync({ type: 'blob' }, function updateCallback(metadata) {
-         const progress = metadata.percent.toFixed(0);
-         const pBar = document.getElementById('zipProgressBar');
-         const pText = document.getElementById('zipPercent');
-         if(pBar) pBar.style.width = `${progress}%`;
-         if(pText) pText.innerText = `${progress}%`;
-      });
+      </div>
+    </main>
+  </div>
 
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(zipBlob);
-      link.download = `${item.originalName}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.remove();
-      showToast(`'${item.originalName}.zip' downloaded successfully!`, 'success');
-    } catch (e) {
-      toast.remove();
-      showToast('Failed to zip and download folder.', 'danger');
-    }
-  }
-}
-
-function handleActionSelectChange() {
-  const select = document.getElementById('actionFolderSelect');
-  const inputGroup = document.getElementById('actionInputGroup');
-  if (select.value === 'new_path') {
-    inputGroup.style.display = 'block';
-    document.getElementById('actionLabel').innerText = 'New Target Path';
-    document.getElementById('actionInput').value = '';
-    document.getElementById('actionInput').focus();
-  } else {
-    inputGroup.style.display = 'none';
-  }
-}
-
-// --- Modals & APIs ---
-function closeModal(id) {
-  document.getElementById(id).style.display = 'none';
-  if (id === 'actionModal') pendingAction = null;
-  if (id === 'previewModal') document.getElementById('mediaContainer').innerHTML = '';
-}
-
-function openPreview(url, fileName) {
-  const container = document.getElementById('mediaContainer');
-  document.getElementById('previewFileName').innerText = fileName;
-  container.innerHTML = '<span style="color: var(--text-muted);">Loading asset...</span>';
-  document.getElementById('previewModal').style.display = 'flex';
-  
-  const ext = fileName.split('.').pop().toLowerCase();
-  if (['mp4', 'webm', 'ogg', 'mov'].includes(ext)) {
-    container.innerHTML = `<video controls autoplay class="preview-media" src="${url}"></video>`;
-  } else {
-    const img = new Image();
-    img.onload = () => container.innerHTML = `<img src="${url}" class="preview-media">`;
-    img.onerror = () => container.innerHTML = '<span style="color: var(--danger);">Preview unavailable.</span>';
-    img.src = url;
-  }
-}
-
-async function executeAction(overrideAction = null) {
-  const actionToRun = overrideAction || pendingAction;
-  const errDiv = document.getElementById('actionError');
-  const btn = document.getElementById('executeActionBtn');
-  
-  // -- Handle Folder Creation --
-  if (actionToRun === 'CREATE_FOLDER') {
-    const inputVal = document.getElementById('actionInput').value.trim();
-    if (!inputVal) { errDiv.innerText = "Folder name is required."; return; }
+  <!-- Right-Click Context Menu -->
+  <div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" id="menu-preview" onclick="triggerContextAction('preview')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+      Preview Media
+    </div>
+    <div class="context-menu-item" id="menu-copy" onclick="triggerContextAction('copy')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+      Copy CDN URL
+    </div>
     
-    const targetFolder = currentPath ? `${currentPath}/${inputVal}` : inputVal;
-    if(btn) { btn.disabled = true; btn.innerText = "Processing..."; }
-    
-    let loadingToast = showToast(`Creating folder '${inputVal}'...`, 'loading', 0);
-    try {
-      const base64Empty = btoa("keep"); 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileData: base64Empty, fileName: '.gitkeep', user: currentUser, folder: targetFolder })
-      });
-      if(!res.ok) throw new Error("Failed to create folder. Permissions error.");
-      
-      loadingToast.remove();
-      showToast("Folder created successfully! Syncing display...", "success");
-      closeModal('actionModal');
-      
-      setTimeout(() => {
-        loadDirectoryContents(currentPath);
-        loadFolders(); 
-      }, 1500);
-      
-    } catch(e) {
-      loadingToast.remove();
-      errDiv.innerText = e.message;
-    }
-    if(btn) { btn.disabled = false; btn.innerText = "Confirm"; }
-    return;
-  }
+    <div class="context-menu-item" id="menu-download" onclick="triggerContextAction('download')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Download
+    </div>
 
-  // -- Handle Standard Actions --
-  let newPath = null;
-  
-  if (actionToRun !== 'DELETE') {
-    if (actionToRun === 'RENAME') {
-      const inputVal = document.getElementById('actionInput').value.trim();
-      if (!inputVal) { errDiv.innerText = "New name is required."; return; }
-      
-      const parts = rightClickedItem.path.split('/');
-      parts.pop(); 
-      newPath = parts.length > 0 ? parts.join('/') + '/' + inputVal : inputVal;
-    } else {
-      const selectVal = document.getElementById('actionFolderSelect').value;
-      const inputVal = document.getElementById('actionInput').value.trim();
-      const targetFolder = selectVal === 'new_path' ? inputVal : selectVal;
-      
-      if (selectVal === 'new_path' && !inputVal) { errDiv.innerText = "New path is required."; return; }
-      
-      const parts = rightClickedItem.path.split('/');
-      const fileName = parts.pop();
-      newPath = targetFolder ? targetFolder + '/' + fileName : fileName;
-      
-      if (actionToRun === 'DUPLICATE' && newPath === rightClickedItem.path) {
-        const extIdx = fileName.lastIndexOf('.');
-        const name = extIdx > -1 ? fileName.substring(0, extIdx) : fileName;
-        const ext = extIdx > -1 ? fileName.substring(extIdx) : '';
-        const newName = `${name}-copy${ext}`;
-        newPath = targetFolder ? `${targetFolder}/${newName}` : newName;
-      }
-    }
+    <div class="context-divider" id="menu-divider-1"></div>
     
-    if (newPath === rightClickedItem.path && actionToRun !== 'DUPLICATE') {
-      closeModal('actionModal'); return;
-    }
-  }
+    <div class="context-menu-item" onclick="triggerContextAction('rename')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.69l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+      Rename
+    </div>
+    <div class="context-menu-item" onclick="triggerContextAction('move')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
+      Move to...
+    </div>
+    <div class="context-menu-item" onclick="triggerContextAction('duplicate')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm-1 12H6V5h9v8zM19 19H8v-2h11V6h2v11c0 1.1-.9 2-2 2z"/></svg>
+      Duplicate to...
+    </div>
 
-  if(btn) { btn.disabled = true; btn.innerText = "Processing..."; }
-  
-  let loadingToast = null;
-  if (actionToRun === 'DELETE') {
-    loadingToast = showToast(`Deleting '${rightClickedItem.originalName}'... This may take a moment.`, 'loading', 0);
-  } else {
-    loadingToast = showToast(`Processing ${actionToRun.toLowerCase()}...`, 'loading', 0);
-  }
-  
-  try {
-    const res = await fetch('/api/manage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        action: actionToRun, 
-        targetPath: rightClickedItem.path, 
-        newPath: newPath, 
-        user: currentUser, 
-        password: currentPassword 
-      })
-    });
-    const data = await res.json();
-    
-    if (loadingToast) loadingToast.remove();
-    
-    if(res.ok) {
-      showToast(`Asset successfully ${actionToRun.toLowerCase()}d! Syncing display...`, 'success');
-      closeModal('actionModal');
+    <div class="context-divider"></div>
+    <div class="context-menu-item danger" onclick="triggerContextAction('delete')">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      Delete
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="modal-overlay" id="previewModal" onclick="closeModal('previewModal')">
+    <div class="modal-content" onclick="event.stopPropagation()" style="align-items: center; padding: 1rem;">
+      <button class="modal-close" onclick="closeModal('previewModal')">✕</button>
+      <div id="mediaContainer"></div>
+      <div id="previewFileName" style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem; font-family: monospace;"></div>
+    </div>
+  </div>
+
+  <!-- Action Modal (Rename/Move/Duplicate/New Folder) -->
+  <div class="modal-overlay" id="actionModal" onclick="closeModal('actionModal')">
+    <div class="modal-content action-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal('actionModal')">✕</button>
+      <h3 id="actionModalTitle">Manage Asset</h3>
       
-      setTimeout(() => {
-        loadDirectoryContents(currentPath);
-        loadFolders(); 
-      }, 1500);
+      <div class="form-group" id="actionFolderGroup" style="display: none;">
+        <label>Select Destination Directory</label>
+        <select id="actionFolderSelect" onchange="handleActionSelectChange()">
+          <option value="">/ (Root Directory)</option>
+        </select>
+      </div>
 
-    } else throw new Error(data.message || "Operation failed.");
-  } catch(err) {
-    if (loadingToast) loadingToast.remove();
-    showToast(err.message, 'danger');
-    if(errDiv) errDiv.innerText = err.message;
-  }
-  
-  if(btn) { btn.disabled = false; btn.innerText = "Confirm"; }
-}
+      <div class="form-group" id="actionInputGroup">
+        <label id="actionLabel">New Name or Path</label>
+        <input type="text" id="actionInput">
+      </div>
 
-async function copyToClipboard(text, btnElement = null, noToast = false) {
-  try {
-    await navigator.clipboard.writeText(text);
-    if (!noToast) showToast('CDN URL copied to clipboard!', 'success');
-    
-    if(btnElement) {
-      const originalHTML = btnElement.innerHTML;
-      btnElement.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="var(--primary)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
-      setTimeout(() => btnElement.innerHTML = originalHTML, 2000);
-    }
-  } catch (err) {
-    showToast('Failed to copy to clipboard.', 'danger');
-  }
-}
+      <div id="actionError" class="error-text"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 0.5rem;">
+        <button class="secondary" onclick="closeModal('actionModal')">Cancel</button>
+        <button class="primary" id="executeActionBtn" onclick="executeAction()">Confirm</button>
+      </div>
+    </div>
+  </div>
 
-document.getElementById('historyCsvBtn').addEventListener('click', () => {
-  const filesToExport = getFilteredFiles();
-  if (filesToExport.length === 0) {
-    showToast('No files to export.', 'danger');
-    return;
-  }
-  let csvContent = "Original Name,Date Added,File Size,CDN Link\n";
-  filesToExport.forEach(file => { csvContent += `"${file.originalName}","${file.dateFormatted}","${formatBytes(file.size)}","${file.url}"\n`; });
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement("a");
-  link.setAttribute("href", URL.createObjectURL(blob));
-  link.setAttribute("download", `Asset_Export_${Date.now()}.csv`);
-  document.body.appendChild(link); link.click(); document.body.removeChild(link);
-  showToast('Export successful!', 'success');
-});
+  <!-- Image Cropper Modal -->
+  <div class="modal-overlay" id="cropModal" onclick="abortAllUploads()">
+    <div class="modal-content" style="width: 800px; max-width: 95vw;" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="abortAllUploads()">✕</button>
+      <h3 style="margin-top: 0; margin-bottom: 1.5rem; color: var(--text-title); font-family: 'Cinzel', serif; font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Adjust Asset Aspect Ratio</h3>
+      
+      <!-- The Image Wrapper -->
+      <div style="width: 100%; height: 50vh; background: var(--bg-base); margin-bottom: 1.5rem; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+        <img id="cropImage" src="" style="max-width: 100%; max-height: 100%; display: block;">
+      </div>
+      
+      <!-- Toolbar Controls -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="secondary" onclick="setCropRatio(1)">1:1 (Square)</button>
+          <button class="secondary" onclick="setCropRatio(16/9)">16:9 (Landscape)</button>
+          <button class="secondary" onclick="setCropRatio(NaN)">Free Transform</button>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button class="secondary" onclick="abortAllUploads()" style="color: var(--danger); border-color: transparent;">Abort All</button>
+          <button class="secondary" onclick="cancelCrop()">Skip Crop</button>
+          <button class="primary" onclick="applyCrop()">Crop & Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
