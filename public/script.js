@@ -165,15 +165,34 @@ function switchTab(tabId) {
   }
 }
 
+// --- Sync Toggles ---
+function syncCropToggles(isChecked) {
+  const cb1 = document.getElementById('enableCropUpload');
+  const cb2 = document.getElementById('enableCropExplorer');
+  if (cb1) cb1.checked = isChecked;
+  if (cb2) cb2.checked = isChecked;
+}
+
 // --- Cropper Intercept & Queue Engine ---
 function handleFilesSelection(files, targetFolder, formatSelect) {
+  const cb1 = document.getElementById('enableCropUpload');
+  const cb2 = document.getElementById('enableCropExplorer');
+  
+  const isCropEnabled = (cb1 && cb1.checked) || (cb2 && cb2.checked);
+
+  // If crop is disabled by the user, bypass the entire queue directly to deployment
+  if (!isCropEnabled) {
+     performUpload(Array.from(files), targetFolder, formatSelect);
+     return;
+  }
+
+  // Otherwise, route through the crop queue
   uploadQueue = Array.from(files);
   croppedFiles = [];
   currentCropTargetFolder = targetFolder;
   currentCropFormat = formatSelect;
   currentCropFileIndex = 0;
   
-  // Disable push button temporarily
   const btn = document.getElementById('uploadBtn');
   if (btn) btn.disabled = true;
 
@@ -182,11 +201,9 @@ function handleFilesSelection(files, targetFolder, formatSelect) {
 
 function processNextInQueue() {
   if (currentCropFileIndex >= uploadQueue.length) {
-    // All files parsed, start the actual upload deployment
     if (croppedFiles.length > 0) {
       performUpload(croppedFiles, currentCropTargetFolder, currentCropFormat);
     } else {
-      // Un-disable button if the user aborted the queue
       const btn = document.getElementById('uploadBtn');
       if (btn) btn.disabled = false;
     }
@@ -195,11 +212,9 @@ function processNextInQueue() {
   
   const file = uploadQueue[currentCropFileIndex];
   
-  // Only launch Cropper for images (Skip SVG or Video)
   if (file.type.startsWith('image/') && !file.type.includes('svg')) {
     openCropModal(file);
   } else {
-    // Automatically skip non-images directly into the processed queue
     croppedFiles.push(file); 
     currentCropFileIndex++;
     processNextInQueue();
@@ -230,7 +245,6 @@ function setCropRatio(ratio) {
 }
 
 function cancelCrop() {
-  // Push the original file unaltered and move to the next
   croppedFiles.push(uploadQueue[currentCropFileIndex]);
   document.getElementById('cropModal').style.display = 'none';
   if (cropperInstance) cropperInstance.destroy();
@@ -242,11 +256,16 @@ function applyCrop() {
   if (!cropperInstance) return;
   const originalFile = uploadQueue[currentCropFileIndex];
   
+  // Explicitly preserve PNG and WEBP to maintain alpha transparency channels
+  let outputMime = originalFile.type;
+  if (outputMime !== 'image/png' && outputMime !== 'image/webp') {
+     outputMime = 'image/jpeg';
+  }
+  
   cropperInstance.getCroppedCanvas({
     imageSmoothingEnabled: true,
     imageSmoothingQuality: 'high',
   }).toBlob((blob) => {
-    // Wrap the Cropper blob into a new File object
     const croppedFile = new File([blob], originalFile.name, {
       type: blob.type,
       lastModified: Date.now()
@@ -257,7 +276,7 @@ function applyCrop() {
     
     currentCropFileIndex++;
     processNextInQueue();
-  }, originalFile.type === 'image/webp' ? 'image/webp' : 'image/jpeg', 0.95);
+  }, outputMime, 0.95);
 }
 
 function abortAllUploads() {
@@ -329,8 +348,8 @@ function processFile(file, targetFormat) {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height); 
         ctx.drawImage(img, 0, 0);
-        const mimeType = targetFormat === 'webp' ? 'image/webp' : 'image/png';
-        resolve({ base64: canvas.toDataURL(mimeType, 0.9).split(',')[1], extension: targetFormat });
+        const mimeType = targetFormat === 'webp' ? 'image/webp' : (targetFormat === 'png' ? 'image/png' : file.type);
+        resolve({ base64: canvas.toDataURL(mimeType, 0.9).split(',')[1], extension: targetFormat === 'original' ? originalExtension : targetFormat });
       };
       img.src = e.target.result;
     };
@@ -391,7 +410,6 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   const files = Array.from(fileInput.files);
   if (!files.length) { showToast("No assets selected.", "danger"); return; }
 
-  // Hand off to the Interceptor Queue instead of uploading directly
   handleFilesSelection(files, targetFolder, formatSelect);
   
   fileInput.value = ""; updateFileMsg(); 
