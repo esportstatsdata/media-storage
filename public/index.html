@@ -325,6 +325,12 @@
                 </select>
               </div>
 
+              <!-- NEW: Sync Checkbox for Cropping -->
+              <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: -0.5rem;">
+                <input type="checkbox" id="enableCropUpload" onchange="syncCropToggles(this.checked)" style="width: 16px; height: 16px; cursor: pointer;">
+                <label for="enableCropUpload" style="margin: 0; text-transform: none; letter-spacing: normal; cursor: pointer;">Enable manual crop before deployment</label>
+              </div>
+
               <div class="form-group">
                 <label>Select Assets</label>
                 <div class="file-drop-area">
@@ -363,6 +369,12 @@
                   <option value="az">Name: A to Z</option>
                   <option value="za">Name: Z to A</option>
                 </select>
+
+                <!-- NEW: Sync Toolbar Checkbox for Cropping -->
+                <div style="display: flex; align-items: center; gap: 0.4rem; background: var(--bg-surface); padding: 0.4rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
+                  <input type="checkbox" id="enableCropExplorer" onchange="syncCropToggles(this.checked)" style="width: 14px; height: 14px; margin: 0; cursor: pointer;">
+                  <label for="enableCropExplorer" style="margin: 0; font-size: 0.85rem; font-weight: 500; text-transform: none; letter-spacing: normal; cursor: pointer; color: var(--text-main);">Crop Uploads</label>
+                </div>
 
                 <button class="secondary" onclick="openCreateFolderModal()">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
