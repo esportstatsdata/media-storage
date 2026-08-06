@@ -4,9 +4,17 @@ let currentPath = '';
 let currentHistoryFiles = [];
 window.currentFolders = []; 
 let viewMode = 'list';
-let sortMode = 'newest'; // NEW: Default to recent first
+let sortMode = 'newest';
 let rightClickedItem = null; 
 let pendingAction = null; 
+
+// --- Cropper & Queue Variables ---
+let uploadQueue = [];
+let currentCropTargetFolder = '';
+let currentCropFormat = '';
+let cropperInstance = null;
+let currentCropFileIndex = 0;
+let croppedFiles = [];
 
 // --- Session & Theme Persistence on Load ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -157,6 +165,112 @@ function switchTab(tabId) {
   }
 }
 
+// --- Cropper Intercept & Queue Engine ---
+function handleFilesSelection(files, targetFolder, formatSelect) {
+  uploadQueue = Array.from(files);
+  croppedFiles = [];
+  currentCropTargetFolder = targetFolder;
+  currentCropFormat = formatSelect;
+  currentCropFileIndex = 0;
+  
+  // Disable push button temporarily
+  const btn = document.getElementById('uploadBtn');
+  if (btn) btn.disabled = true;
+
+  processNextInQueue();
+}
+
+function processNextInQueue() {
+  if (currentCropFileIndex >= uploadQueue.length) {
+    // All files parsed, start the actual upload deployment
+    if (croppedFiles.length > 0) {
+      performUpload(croppedFiles, currentCropTargetFolder, currentCropFormat);
+    } else {
+      // Un-disable button if the user aborted the queue
+      const btn = document.getElementById('uploadBtn');
+      if (btn) btn.disabled = false;
+    }
+    return;
+  }
+  
+  const file = uploadQueue[currentCropFileIndex];
+  
+  // Only launch Cropper for images (Skip SVG or Video)
+  if (file.type.startsWith('image/') && !file.type.includes('svg')) {
+    openCropModal(file);
+  } else {
+    // Automatically skip non-images directly into the processed queue
+    croppedFiles.push(file); 
+    currentCropFileIndex++;
+    processNextInQueue();
+  }
+}
+
+function openCropModal(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = document.getElementById('cropImage');
+    img.src = e.target.result;
+    document.getElementById('cropModal').style.display = 'flex';
+    
+    if (cropperInstance) cropperInstance.destroy();
+    
+    cropperInstance = new Cropper(img, {
+      viewMode: 2,
+      background: false,
+      autoCropArea: 1,
+      responsive: true
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function setCropRatio(ratio) {
+  if (cropperInstance) cropperInstance.setAspectRatio(ratio);
+}
+
+function cancelCrop() {
+  // Push the original file unaltered and move to the next
+  croppedFiles.push(uploadQueue[currentCropFileIndex]);
+  document.getElementById('cropModal').style.display = 'none';
+  if (cropperInstance) cropperInstance.destroy();
+  currentCropFileIndex++;
+  processNextInQueue();
+}
+
+function applyCrop() {
+  if (!cropperInstance) return;
+  const originalFile = uploadQueue[currentCropFileIndex];
+  
+  cropperInstance.getCroppedCanvas({
+    imageSmoothingEnabled: true,
+    imageSmoothingQuality: 'high',
+  }).toBlob((blob) => {
+    // Wrap the Cropper blob into a new File object
+    const croppedFile = new File([blob], originalFile.name, {
+      type: blob.type,
+      lastModified: Date.now()
+    });
+    croppedFiles.push(croppedFile);
+    document.getElementById('cropModal').style.display = 'none';
+    cropperInstance.destroy();
+    
+    currentCropFileIndex++;
+    processNextInQueue();
+  }, originalFile.type === 'image/webp' ? 'image/webp' : 'image/jpeg', 0.95);
+}
+
+function abortAllUploads() {
+  document.getElementById('cropModal').style.display = 'none';
+  if (cropperInstance) cropperInstance.destroy();
+  uploadQueue = [];
+  croppedFiles = [];
+  showToast("Deployment aborted.", "info");
+  
+  const btn = document.getElementById('uploadBtn');
+  if (btn) btn.disabled = false;
+}
+
 // --- Centralized Upload Engine ---
 async function performUpload(files, targetFolder, targetFormat) {
   if (!files.length) return;
@@ -195,6 +309,9 @@ async function performUpload(files, targetFolder, targetFormat) {
          loadDirectoryContents(currentPath);
      }, 1500);
   }
+  
+  const btn = document.getElementById('uploadBtn');
+  if (btn) btn.disabled = false;
 }
 
 function processFile(file, targetFormat) {
@@ -274,12 +391,10 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   const files = Array.from(fileInput.files);
   if (!files.length) { showToast("No assets selected.", "danger"); return; }
 
-  const btn = document.getElementById('uploadBtn');
-  btn.disabled = true; 
+  // Hand off to the Interceptor Queue instead of uploading directly
+  handleFilesSelection(files, targetFolder, formatSelect);
   
-  await performUpload(files, targetFolder, formatSelect);
-  
-  btn.disabled = false; fileInput.value = ""; updateFileMsg(); 
+  fileInput.value = ""; updateFileMsg(); 
 });
 
 // --- Explorer Inline Upload & Drag/Drop Logic ---
@@ -287,9 +402,8 @@ function handleExplorerUpload(input) {
   const files = Array.from(input.files);
   if(!files.length) return;
   const format = document.getElementById('formatSelect') ? document.getElementById('formatSelect').value : 'original';
-  performUpload(files, currentPath, format).then(() => {
-     input.value = "";
-  });
+  handleFilesSelection(files, currentPath, format);
+  input.value = "";
 }
 
 const mainContentElement = document.querySelector('.main-content');
@@ -313,7 +427,7 @@ dropZoneElement.addEventListener('drop', (e) => {
   const files = Array.from(e.dataTransfer.files);
   if (!files.length) return;
   const format = document.getElementById('formatSelect') ? document.getElementById('formatSelect').value : 'original';
-  performUpload(files, currentPath, format);
+  handleFilesSelection(files, currentPath, format);
 });
 
 // --- Explorer Utilities ---
@@ -328,7 +442,7 @@ function isImageExtension(fileName) {
   return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
 }
 
-// --- NEW: Sorting Logic ---
+// --- Sorting Logic ---
 function changeSortMode(mode) {
   sortMode = mode;
   renderFiles();
@@ -345,13 +459,11 @@ function getSortedItems(filesToRender, foldersToRender) {
     sortedFiles.sort((a, b) => b.originalName.localeCompare(a.originalName));
     sortedFolders.sort((a, b) => b.localeCompare(a));
   } else if (sortMode === 'newest') {
-    // Highest timestamp first
     sortedFiles.sort((a, b) => b.timestamp - a.timestamp);
-    sortedFolders.sort((a, b) => a.localeCompare(b)); // Keep folders A-Z
+    sortedFolders.sort((a, b) => a.localeCompare(b)); 
   } else if (sortMode === 'oldest') {
-    // Lowest timestamp first
     sortedFiles.sort((a, b) => a.timestamp - b.timestamp);
-    sortedFolders.sort((a, b) => a.localeCompare(b)); // Keep folders A-Z
+    sortedFolders.sort((a, b) => a.localeCompare(b)); 
   }
   
   return { sortedFiles, sortedFolders };
@@ -397,7 +509,6 @@ async function loadDirectoryContents(targetPath = '') {
       if(hint) hint.style.display = 'block';
       
       data.files.forEach(file => {
-        // Extract 13-digit Unix Timestamp from our specific filename format
         const timestampMatch = file.name.match(/^(\d{13})-(.+)$/);
         
         let timestamp = 0;
@@ -410,7 +521,6 @@ async function loadDirectoryContents(targetPath = '') {
             const d = new Date(timestamp);
             dateFormatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
         } else {
-            // Fallback for files manually uploaded without our specific script
             const originalNameMatch = file.name.match(/^\d+-(.+)$/);
             originalName = originalNameMatch ? originalNameMatch[1] : file.name;
         }
