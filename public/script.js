@@ -180,13 +180,11 @@ function handleFilesSelection(files, targetFolder, formatSelect) {
   
   const isCropEnabled = (cb1 && cb1.checked) || (cb2 && cb2.checked);
 
-  // If crop is disabled by the user, bypass the entire queue directly to deployment
   if (!isCropEnabled) {
      performUpload(Array.from(files), targetFolder, formatSelect);
      return;
   }
 
-  // Otherwise, route through the crop queue
   uploadQueue = Array.from(files);
   croppedFiles = [];
   currentCropTargetFolder = targetFolder;
@@ -247,7 +245,10 @@ function setCropRatio(ratio) {
 function cancelCrop() {
   croppedFiles.push(uploadQueue[currentCropFileIndex]);
   document.getElementById('cropModal').style.display = 'none';
-  if (cropperInstance) cropperInstance.destroy();
+  if (cropperInstance) {
+    cropperInstance.destroy();
+    cropperInstance = null;
+  }
   currentCropFileIndex++;
   processNextInQueue();
 }
@@ -256,32 +257,42 @@ function applyCrop() {
   if (!cropperInstance) return;
   const originalFile = uploadQueue[currentCropFileIndex];
   
-  // Explicitly preserve PNG and WEBP to maintain alpha transparency channels
   let outputMime = originalFile.type;
   if (outputMime !== 'image/png' && outputMime !== 'image/webp') {
      outputMime = 'image/jpeg';
   }
   
+  // Implemented hard caps on width/height to ensure payload stays under Vercel's 4.5MB limit
   cropperInstance.getCroppedCanvas({
+    maxWidth: 2560,
+    maxHeight: 2560,
     imageSmoothingEnabled: true,
     imageSmoothingQuality: 'high',
   }).toBlob((blob) => {
-    const croppedFile = new File([blob], originalFile.name, {
-      type: blob.type,
-      lastModified: Date.now()
-    });
-    croppedFiles.push(croppedFile);
+    if (blob) {
+      // Use direct Blob property assignment to ensure max browser compatibility 
+      blob.name = originalFile.name;
+      blob.lastModified = Date.now();
+      croppedFiles.push(blob);
+    } else {
+      croppedFiles.push(originalFile);
+    }
+    
     document.getElementById('cropModal').style.display = 'none';
     cropperInstance.destroy();
+    cropperInstance = null;
     
     currentCropFileIndex++;
     processNextInQueue();
-  }, outputMime, 0.95);
+  }, outputMime, 0.85); // Optimized export quality to heavily compress the payload size
 }
 
 function abortAllUploads() {
   document.getElementById('cropModal').style.display = 'none';
-  if (cropperInstance) cropperInstance.destroy();
+  if (cropperInstance) {
+    cropperInstance.destroy();
+    cropperInstance = null;
+  }
   uploadQueue = [];
   croppedFiles = [];
   showToast("Deployment aborted.", "info");
@@ -310,15 +321,21 @@ async function performUpload(files, targetFolder, targetFormat) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileData: base64, fileName: timestampedName, user: currentUser, folder: targetFolder })
       });
-      if (res.ok) successCount++;
-    } catch (e) {}
+      if (res.ok) {
+        successCount++;
+      } else {
+        console.error(`Upload rejected by server for file: ${files[i].name}`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }
   
   loadingToast.remove();
   if (successCount > 0) {
       showToast(`Deployment Complete: ${successCount} asset(s) pushed. Syncing display...`, 'success');
   } else {
-      showToast(`Deployment failed.`, 'danger');
+      showToast(`Deployment failed. Image payload might be too large.`, 'danger');
   }
   
   loadFolders(); 
