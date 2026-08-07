@@ -177,8 +177,10 @@ function syncCropToggles(isChecked) {
 function handleFilesSelection(files, targetFolder, formatSelect) {
   const cb1 = document.getElementById('enableCropUpload');
   const cb2 = document.getElementById('enableCropExplorer');
+  const bulkCb = document.getElementById('bulkCropCheckbox');
   
   const isCropEnabled = (cb1 && cb1.checked) || (cb2 && cb2.checked);
+  if (bulkCb) bulkCb.checked = false; // Reset bulk option for fresh upload batch
 
   if (!isCropEnabled) {
      performUpload(Array.from(files), targetFolder, formatSelect);
@@ -253,24 +255,76 @@ function cancelCrop() {
   processNextInQueue();
 }
 
+// Helper to mathematically apply the crop strictly in the background via Canvas
+function processBulkCrop(file, refCropData, refImgData) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            img.onload = () => {
+                // Determine percentage metrics from original crop bounding box
+                const pctX = refCropData.x / refImgData.naturalWidth;
+                const pctY = refCropData.y / refImgData.naturalHeight;
+                const pctW = refCropData.width / refImgData.naturalWidth;
+                const pctH = refCropData.height / refImgData.naturalHeight;
+
+                // Map mathematical percentages strictly onto the new image natural dimensions
+                let sx = Math.max(0, pctX * img.naturalWidth);
+                let sy = Math.max(0, pctY * img.naturalHeight);
+                let sw = Math.min(img.naturalWidth - sx, pctW * img.naturalWidth);
+                let sh = Math.min(img.naturalHeight - sy, pctH * img.naturalHeight);
+
+                let canvas = document.createElement('canvas');
+                let finalW = sw;
+                let finalH = sh;
+                
+                // Enforce Vercel hardcap limits on off-screen bulk canvas
+                if (finalW > 2560 || finalH > 2560) {
+                    const ratio = Math.min(2560 / finalW, 2560 / finalH);
+                    finalW *= ratio;
+                    finalH *= ratio;
+                }
+                
+                canvas.width = finalW;
+                canvas.height = finalH;
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, sx, sy, sw, sh, 0, 0, finalW, finalH);
+
+                let outMime = file.type;
+                if (outMime !== 'image/png' && outMime !== 'image/webp') outMime = 'image/jpeg';
+
+                canvas.toBlob((blob) => resolve(blob), outMime, 0.85);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 function applyCrop() {
   if (!cropperInstance) return;
   const originalFile = uploadQueue[currentCropFileIndex];
+  
+  const bulkCb = document.getElementById('bulkCropCheckbox');
+  const isBulk = bulkCb ? bulkCb.checked : false;
   
   let outputMime = originalFile.type;
   if (outputMime !== 'image/png' && outputMime !== 'image/webp') {
      outputMime = 'image/jpeg';
   }
   
-  // Implemented hard caps on width/height to ensure payload stays under Vercel's 4.5MB limit
+  // Extract absolute bounding measurements before destroying cropper to use later in loop
+  const cropData = cropperInstance.getData();
+  const imgData = cropperInstance.getImageData();
+  
   cropperInstance.getCroppedCanvas({
-    maxWidth: 2560,
-    maxHeight: 2560,
-    imageSmoothingEnabled: true,
-    imageSmoothingQuality: 'high',
-  }).toBlob((blob) => {
+    maxWidth: 2560, maxHeight: 2560, imageSmoothingEnabled: true, imageSmoothingQuality: 'high',
+  }).toBlob(async (blob) => {
     if (blob) {
-      // Use direct Blob property assignment to ensure max browser compatibility 
       blob.name = originalFile.name;
       blob.lastModified = Date.now();
       croppedFiles.push(blob);
@@ -282,9 +336,33 @@ function applyCrop() {
     cropperInstance.destroy();
     cropperInstance = null;
     
-    currentCropFileIndex++;
-    processNextInQueue();
-  }, outputMime, 0.85); // Optimized export quality to heavily compress the payload size
+    if (isBulk && currentCropFileIndex < uploadQueue.length - 1) {
+       let remainingCount = uploadQueue.length - currentCropFileIndex - 1;
+       let bulkToast = showToast(`Background compiling ${remainingCount} asset(s)...`, 'loading', 0);
+       
+       for (let i = currentCropFileIndex + 1; i < uploadQueue.length; i++) {
+           let nextFile = uploadQueue[i];
+           if (nextFile.type.startsWith('image/') && !nextFile.type.includes('svg')) {
+               try {
+                   let pBlob = await processBulkCrop(nextFile, cropData, imgData);
+                   pBlob.name = nextFile.name;
+                   pBlob.lastModified = Date.now();
+                   croppedFiles.push(pBlob);
+               } catch(e) {
+                   croppedFiles.push(nextFile);
+               }
+           } else {
+               croppedFiles.push(nextFile);
+           }
+       }
+       bulkToast.remove();
+       currentCropFileIndex = uploadQueue.length;
+       processNextInQueue();
+    } else {
+       currentCropFileIndex++;
+       processNextInQueue();
+    }
+  }, outputMime, 0.85);
 }
 
 function abortAllUploads() {
