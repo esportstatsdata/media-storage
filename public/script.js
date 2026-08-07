@@ -180,7 +180,7 @@ function handleFilesSelection(files, targetFolder, formatSelect) {
   const bulkCb = document.getElementById('bulkCropCheckbox');
   
   const isCropEnabled = (cb1 && cb1.checked) || (cb2 && cb2.checked);
-  if (bulkCb) bulkCb.checked = false; // Reset bulk option for fresh upload batch
+  if (bulkCb) bulkCb.checked = false; 
 
   if (!isCropEnabled) {
      performUpload(Array.from(files), targetFolder, formatSelect);
@@ -255,20 +255,17 @@ function cancelCrop() {
   processNextInQueue();
 }
 
-// Helper to mathematically apply the crop strictly in the background via Canvas
 function processBulkCrop(file, refCropData, refImgData) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         const reader = new FileReader();
         reader.onload = (e) => {
             img.onload = () => {
-                // Determine percentage metrics from original crop bounding box
                 const pctX = refCropData.x / refImgData.naturalWidth;
                 const pctY = refCropData.y / refImgData.naturalHeight;
                 const pctW = refCropData.width / refImgData.naturalWidth;
                 const pctH = refCropData.height / refImgData.naturalHeight;
 
-                // Map mathematical percentages strictly onto the new image natural dimensions
                 let sx = Math.max(0, pctX * img.naturalWidth);
                 let sy = Math.max(0, pctY * img.naturalHeight);
                 let sw = Math.min(img.naturalWidth - sx, pctW * img.naturalWidth);
@@ -278,9 +275,8 @@ function processBulkCrop(file, refCropData, refImgData) {
                 let finalW = sw;
                 let finalH = sh;
                 
-                // Enforce Vercel hardcap limits on off-screen bulk canvas
-                if (finalW > 2560 || finalH > 2560) {
-                    const ratio = Math.min(2560 / finalW, 2560 / finalH);
+                if (finalW > 2048 || finalH > 2048) {
+                    const ratio = Math.min(2048 / finalW, 2048 / finalH);
                     finalW *= ratio;
                     finalH *= ratio;
                 }
@@ -295,7 +291,7 @@ function processBulkCrop(file, refCropData, refImgData) {
                 let outMime = file.type;
                 if (outMime !== 'image/png' && outMime !== 'image/webp') outMime = 'image/jpeg';
 
-                canvas.toBlob((blob) => resolve(blob), outMime, 0.85);
+                canvas.toBlob((blob) => resolve(blob), outMime, 0.82);
             };
             img.onerror = reject;
             img.src = e.target.result;
@@ -317,12 +313,11 @@ function applyCrop() {
      outputMime = 'image/jpeg';
   }
   
-  // Extract absolute bounding measurements before destroying cropper to use later in loop
   const cropData = cropperInstance.getData();
   const imgData = cropperInstance.getImageData();
   
   cropperInstance.getCroppedCanvas({
-    maxWidth: 2560, maxHeight: 2560, imageSmoothingEnabled: true, imageSmoothingQuality: 'high',
+    maxWidth: 2048, maxHeight: 2048, imageSmoothingEnabled: true, imageSmoothingQuality: 'high',
   }).toBlob(async (blob) => {
     if (blob) {
       blob.name = originalFile.name;
@@ -362,7 +357,7 @@ function applyCrop() {
        currentCropFileIndex++;
        processNextInQueue();
     }
-  }, outputMime, 0.85);
+  }, outputMime, 0.82);
 }
 
 function abortAllUploads() {
@@ -379,7 +374,7 @@ function abortAllUploads() {
   if (btn) btn.disabled = false;
 }
 
-// --- Centralized Upload Engine ---
+// --- Centralized Upload & Compression Engine ---
 async function performUpload(files, targetFolder, targetFormat) {
   if (!files.length) return;
   
@@ -413,7 +408,7 @@ async function performUpload(files, targetFolder, targetFormat) {
   if (successCount > 0) {
       showToast(`Deployment Complete: ${successCount} asset(s) pushed. Syncing display...`, 'success');
   } else {
-      showToast(`Deployment failed. Image payload might be too large.`, 'danger');
+      showToast(`Deployment failed. File size exceeds limits.`, 'danger');
   }
   
   loadFolders(); 
@@ -428,26 +423,90 @@ async function performUpload(files, targetFolder, targetFormat) {
   if (btn) btn.disabled = false;
 }
 
+// --- Dynamic File Processing & Compression Handler ---
 function processFile(file, targetFormat) {
   return new Promise((resolve, reject) => {
     const originalExtension = file.name.split('.').pop().toLowerCase();
-    if (!file.type.startsWith('image/') || targetFormat === 'original') {
+    
+    // Check non-images or SVGs
+    if (!file.type.startsWith('image/') || file.type.includes('svg')) {
       const reader = new FileReader();
       reader.onload = () => resolve({ base64: reader.result.split(',')[1], extension: originalExtension });
-      reader.onerror = reject; reader.readAsDataURL(file); return;
+      reader.onerror = reject; 
+      reader.readAsDataURL(file); 
+      return;
     }
-    const img = new Image(); const reader = new FileReader();
+
+    const compressSelect = document.getElementById('compressSelect');
+    const compressOption = compressSelect ? compressSelect.value : 'auto';
+
+    // Check if compression is required
+    const isOver3MB = file.size > 3 * 1024 * 1024;
+    const shouldCompress = compressOption !== 'none' && (compressOption !== 'auto' || isOver3MB || targetFormat !== 'original');
+
+    // If compression disabled and file under 3MB, read directly
+    if (!shouldCompress) {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ base64: reader.result.split(',')[1], extension: originalExtension });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // Configure preset max bounds and image quality
+    let maxDim = 2048;
+    let quality = 0.82;
+
+    if (compressOption === 'low') { maxDim = 1280; quality = 0.75; }
+    else if (compressOption === 'medium' || compressOption === 'auto') { maxDim = 2048; quality = 0.82; }
+    else if (compressOption === 'high') { maxDim = 3840; quality = 0.90; }
+
+    const img = new Image();
+    const reader = new FileReader();
     reader.onload = (e) => {
       img.onload = () => {
-        const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        // Scale down dimensions if exceeding max threshold
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height); 
-        ctx.drawImage(img, 0, 0);
-        const mimeType = targetFormat === 'webp' ? 'image/webp' : (targetFormat === 'png' ? 'image/png' : file.type);
-        resolve({ base64: canvas.toDataURL(mimeType, 0.9).split(',')[1], extension: targetFormat === 'original' ? originalExtension : targetFormat });
+        
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let mimeType = file.type;
+        let ext = originalExtension;
+
+        if (targetFormat === 'webp') {
+          mimeType = 'image/webp';
+          ext = 'webp';
+        } else if (targetFormat === 'png') {
+          mimeType = 'image/png';
+          ext = 'png';
+        } else if (mimeType !== 'image/png' && mimeType !== 'image/webp') {
+          mimeType = 'image/jpeg';
+        }
+
+        const dataUrl = canvas.toDataURL(mimeType, quality);
+        resolve({ base64: dataUrl.split(',')[1], extension: ext });
       };
+      img.onerror = reject;
       img.src = e.target.result;
     };
+    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
@@ -687,7 +746,6 @@ function renderFiles() {
   let filesToRender = getFilteredFiles();
   let foldersToRender = getFilteredFolders();
   
-  // Apply Sort
   const sorted = getSortedItems(filesToRender, foldersToRender);
   filesToRender = sorted.sortedFiles;
   foldersToRender = sorted.sortedFolders;
@@ -728,7 +786,6 @@ function renderFiles() {
     }
   }
 
-  // Do not block rendering if searching yields 0, let user know.
   if (filesToRender.length === 0 && foldersToRender.length === 0 && (currentHistoryFiles.length > 0 || window.currentFolders.length > 0)) {
     container.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;">No matching assets found.</div>';
     return;
