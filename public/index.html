@@ -325,6 +325,18 @@
                 </select>
               </div>
 
+              <!-- NEW: Compression Preset Selection -->
+              <div class="form-group">
+                <label>Image Resizing & Payload Compression</label>
+                <select id="compressSelect">
+                  <option value="auto" selected>Auto Safe (Auto-Compress files >3MB / Max 2048px)</option>
+                  <option value="medium">Balanced (Max 2048px / 80% Quality)</option>
+                  <option value="high">High Resolution (Max 3840px / 90% Quality)</option>
+                  <option value="low">Web Fast (Max 1280px / 75% Quality)</option>
+                  <option value="none">Original Size (No Compression)</option>
+                </select>
+              </div>
+
               <!-- Sync Checkbox for Cropping -->
               <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: -0.5rem;">
                 <input type="checkbox" id="enableCropUpload" onchange="syncCropToggles(this.checked)" style="width: 16px; height: 16px; cursor: pointer;">
@@ -520,7 +532,7 @@
         </div>
       </div>
 
-      <!-- NEW: Bulk Crop Option -->
+      <!-- Bulk Crop Option -->
       <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
         <input type="checkbox" id="bulkCropCheckbox" style="width: 16px; height: 16px; cursor: pointer;">
         <label for="bulkCropCheckbox" style="margin: 0; text-transform: none; font-size: 0.9rem; font-weight: 500; letter-spacing: normal; cursor: pointer; color: var(--primary);">Apply this exact crop to all remaining queued assets</label>
